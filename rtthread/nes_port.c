@@ -37,7 +37,6 @@ int nes_memcmp(const void *str1, const void *str2, size_t n){
 }
 
 #if (NES_USE_FS == 1)
-#include <dfs_posix.h>
 /* io */
 FILE *nes_fopen(const char * filename, const char * mode ){
     return fopen(filename,mode);

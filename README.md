@@ -53,7 +53,7 @@ gitee: [nes: c语言实现的nes模拟器 (gitee.com)](https://gitee.com/PeakRac
 
 #### Windows:	
 
-​	install MSVC([Visual Studio 2022](https://visualstudio.microsoft.com/zh-hans/vs/))
+​	install MSVC([Visual Studio](https://visualstudio.microsoft.com/zh-hans/vs/))
 
 ​	install [xmake](https://github.com/xmake-io/xmake)
 
