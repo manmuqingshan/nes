@@ -78,7 +78,7 @@ rt_weak int nes_deinitex(nes_t *nes){
 }
 
 rt_weak int nes_draw(int x1, int y1, int x2, int y2, nes_color_t* color_data){
-#error "Display function is not implemented!"
+#warning "Display function is not implemented!"
     return 0;
 }
 
