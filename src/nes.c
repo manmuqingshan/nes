@@ -76,19 +76,10 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     const uint8_t dy = (const uint8_t)nes->nes_ppu.v.fine_y;
     const uint8_t tile_y = (const uint8_t)nes->nes_ppu.v.coarse_y;
     uint8_t nametable_id = (uint8_t)nes->nes_ppu.v.nametable;
+    const uint8_t bg_base = nes->nes_ppu.CTRL_B ? 4 : 0;
     for (uint8_t tile_x = dx; tile_x < 32; tile_x++){
         const uint8_t pattern_id = nes->nes_ppu.name_table[nametable_id][tile_x + (tile_y << 5)];
-        // if (pattern_id == 0x40){
-        //     uint8_t tile_x1 = (tile_x + 1) & 0x1F;
-        //     NES_LOG_DEBUG("scanline:%d pattern_id:0x%02x dx:%d dy:%d tile_x:%d tile_y:%d\n",scanline,pattern_id,dx,dy,tile_x,tile_y);
-        //     NES_LOG_DEBUG("tile_x1:%d\n",tile_x1);
-        // }
-        // if (scanline == 170 && tile_x == 10)
-        // {
-        //     printf("scanline:%d pattern_id:0x%02x dx:%d dy:%d tile_x:%d tile_y:%d\n",scanline,pattern_id,dx,dy,tile_x,tile_y);
-        // }
-        
-        const uint8_t* bit0_p = nes->nes_ppu.pattern_table[nes->nes_ppu.CTRL_B ? 4 : 0] + pattern_id * 16;
+        const uint8_t* bit0_p = nes->nes_ppu.pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
         const uint8_t* bit1_p = bit0_p + 8;
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit1_p[dy];
@@ -106,7 +97,7 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     nametable_id ^= 1;
     for (uint8_t tile_x = 0; tile_x <= dx; tile_x++){
         const uint8_t pattern_id = nes->nes_ppu.name_table[nametable_id][tile_x + (tile_y << 5)];
-        const uint8_t* bit0_p = nes->nes_ppu.pattern_table[nes->nes_ppu.CTRL_B ? 4 : 0] + pattern_id * 16;
+        const uint8_t* bit0_p = nes->nes_ppu.pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
         const uint8_t* bit1_p = bit0_p + 8;
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit1_p[dy];
@@ -156,8 +147,9 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
         const uint8_t sprite_id = sprite[sprite_number-1];
         const sprite_info_t sprite_info = nes->nes_ppu.sprite_info[sprite_id];
         const uint8_t sprite_y = (uint8_t)(sprite_info.y + 1);
-        const uint8_t* sprite_bit0_p = nes->nes_ppu.pattern_table[nes->nes_ppu.CTRL_H?((sprite_info.pattern_8x16)?4:0):(nes->nes_ppu.CTRL_S?4:0)] \
-                                        + (nes->nes_ppu.CTRL_H?(sprite_info.tile_index_8x16 << 1 ):(sprite_info.tile_index_number)) * 16;
+        const uint8_t spr_base = nes->nes_ppu.CTRL_H ? ((sprite_info.pattern_8x16) ? 4 : 0) : (nes->nes_ppu.CTRL_S ? 4 : 0);
+        const uint8_t spr_tile = nes->nes_ppu.CTRL_H ? (uint8_t)(sprite_info.tile_index_8x16 << 1) : sprite_info.tile_index_number;
+        const uint8_t* sprite_bit0_p = nes->nes_ppu.pattern_table[spr_base + (spr_tile >> 6)] + ((spr_tile & 0x3F) << 4);
         const uint8_t* sprite_bit1_p = sprite_bit0_p + 8;
 
         uint8_t dy = (uint8_t)(scanline - sprite_y);
@@ -237,7 +229,8 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                 const uint8_t tile_x = (nes->nes_ppu.sprite_info[0].x) >> 3;
                 const uint8_t tile_y = (uint8_t)(scanline >> 3);
                 const uint8_t pattern_id = nes->nes_ppu.name_table[nametable_id][tile_x + (tile_y << 5)];
-                const uint8_t* bit0_p = nes->nes_ppu.pattern_table[nes->nes_ppu.CTRL_B ? 4 : 0] + pattern_id * 16;
+                const uint8_t bg_base2 = nes->nes_ppu.CTRL_B ? 4 : 0;
+                const uint8_t* bit0_p = nes->nes_ppu.pattern_table[bg_base2 + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
                 const uint8_t* bit1_p = bit0_p + 8;
                 const uint8_t background_date = bit0_p[dy] | bit1_p[dy] << 1;
                 if (sprite_date & background_date){
@@ -359,6 +352,9 @@ void nes_run(nes_t* nes){
                 // https://www.nesdev.org/wiki/PPU_scrolling#At_dot_257_of_each_scanline
                 // v: ....A.. ...BCDEF <- t: ....A.. ...BCDEF
                 nes->nes_ppu.v_reg = (nes->nes_ppu.v_reg & (uint16_t)0xFBE0) | (nes->nes_ppu.t_reg & (uint16_t)0x041F);
+            }
+            if (nes->nes_mapper.mapper_hsync) {
+                nes->nes_mapper.mapper_hsync(nes);
             }
             nes_opcode(nes,NES_PPU_CPU_CLOCKS-85);
 #if (NES_ENABLE_SOUND==1)
