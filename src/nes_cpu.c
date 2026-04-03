@@ -1116,17 +1116,23 @@ static inline void nes_sre(nes_t* nes, const uint16_t address){
 static inline void nes_rra(nes_t* nes, const uint16_t address){
     uint16_t data = nes_read_cpu(nes, address);
     // ror
-    data |= (nes->nes_cpu.C << 8);
-    uint8_t cflag = data & 0x01;
+    const uint8_t old_c = NES_CPU_P & NES_FLAG_C;
+    data |= ((uint16_t)old_c << 8);
+    const uint8_t cflag = data & 0x01;
     data >>= 1;
-    nes_write_cpu(nes,address,(uint8_t)data);
+    nes_write_cpu(nes, address, (uint8_t)data);
     // adc
-    const uint16_t data1 = nes->nes_cpu.A + data + cflag;
-    nes->nes_cpu.C = data1 >> 8;
-    if (!((nes->nes_cpu.A ^ data) & 0x80) && ((nes->nes_cpu.A ^ (uint8_t)data1) & 0x80)) nes->nes_cpu.V = 1;
-    else nes->nes_cpu.V = 0;
-    nes->nes_cpu.A = (uint8_t)data1;
-    NES_CHECK_NZ(nes->nes_cpu.A);
+    const uint8_t a = nes->nes_cpu.A;
+    const uint8_t src = (uint8_t)data;
+    const uint16_t result16 = a + src + cflag;
+    const uint8_t result8 = (uint8_t)result16;
+    uint8_t flags = NES_CPU_P & (uint8_t)~(NES_FLAG_C | NES_FLAG_V | NES_FLAG_N | NES_FLAG_Z);
+    flags |= (uint8_t)(result16 >> 8) & NES_FLAG_C;
+    flags |= (((~(a ^ src)) & (a ^ result8)) >> 1) & NES_FLAG_V;
+    flags |= result8 & NES_FLAG_N;
+    flags |= (uint8_t)((result8 == 0) << 1);
+    NES_CPU_P = flags;
+    nes->nes_cpu.A = result8;
 }
 
 /*
@@ -1159,9 +1165,13 @@ static inline void nes_dcp(nes_t* nes, const uint16_t address){
     data--;
     nes_write_cpu(nes, address, data);
     // cmp
-    const uint16_t data1 = (uint16_t)nes->nes_cpu.A - (uint16_t)data;
-    nes->nes_cpu.C = !(data1 >> 15);
-    NES_CHECK_NZ((uint8_t)data1);
+    const uint16_t value = (uint16_t)nes->nes_cpu.A - (uint16_t)data;
+    const uint8_t val8 = (uint8_t)value;
+    uint8_t flags = NES_CPU_P & (uint8_t)~(NES_FLAG_C | NES_FLAG_N | NES_FLAG_Z);
+    flags |= (uint8_t)(!(value >> 15)) & NES_FLAG_C;
+    flags |= val8 & NES_FLAG_N;
+    flags |= (uint8_t)((val8 == 0) << 1);
+    NES_CPU_P = flags;
 }
 
 /*
@@ -1174,15 +1184,16 @@ static inline void nes_isc(nes_t* nes, const uint16_t address){
     // inc
     nes_write_cpu(nes, address, ++data);
     // sbc
-    const uint16_t data1 = nes->nes_cpu.A - data - !nes->nes_cpu.C;
-    nes->nes_cpu.C = !(data1 >> 8);
-    const uint8_t data2 = (uint8_t)data1;
-
-    if (((nes->nes_cpu.A ^ data) & 0x80) && ((nes->nes_cpu.A ^ data2) & 0x80)) nes->nes_cpu.V = 1;
-    else nes->nes_cpu.V = 0;
-
-    nes->nes_cpu.A = data2;
-    NES_CHECK_NZ(nes->nes_cpu.A);
+    const uint8_t a = nes->nes_cpu.A;
+    const uint16_t result16 = a - data - !(NES_CPU_P & NES_FLAG_C);
+    const uint8_t result8 = (uint8_t)result16;
+    uint8_t flags = NES_CPU_P & (uint8_t)~(NES_FLAG_C | NES_FLAG_V | NES_FLAG_N | NES_FLAG_Z);
+    flags |= (uint8_t)(!(result16 >> 8)) & NES_FLAG_C;
+    flags |= (((a ^ data) & (a ^ result8)) >> 1) & NES_FLAG_V;
+    flags |= result8 & NES_FLAG_N;
+    flags |= (uint8_t)((result8 == 0) << 1);
+    NES_CPU_P = flags;
+    nes->nes_cpu.A = result8;
 }
 
 /*
@@ -1228,9 +1239,8 @@ static inline void nes_arr(nes_t* nes, const uint16_t address){
     *                 *  
 */
 static inline void nes_xaa(nes_t* nes, const uint16_t address){
-    nes->nes_cpu.A = nes->nes_cpu.X & nes_read_cpu(nes, address);
+    nes->nes_cpu.A = (nes->nes_cpu.A | 0xFF) & nes->nes_cpu.X & nes_read_cpu(nes, address);
     NES_CHECK_NZ(nes->nes_cpu.A);
-    nes->nes_cpu.C = nes->nes_cpu.A >> 7;
 }
 
 /*
@@ -1239,7 +1249,7 @@ static inline void nes_xaa(nes_t* nes, const uint16_t address){
     *                 *  *
 */
 static inline void nes_axs(nes_t* nes, const uint16_t address){
-    uint16_t data = (nes->nes_cpu.A & nes->nes_cpu.X) - address;
+    const uint16_t data = (nes->nes_cpu.A & nes->nes_cpu.X) - nes_read_cpu(nes, address);
     nes->nes_cpu.X = (uint8_t)data;
     NES_CHECK_NZ(nes->nes_cpu.X);
     nes->nes_cpu.C = !(data >> 15);
