@@ -4,10 +4,12 @@
 
 ## master (unreleased)
 
-- 完善cpu模拟(包括所有非法指令)
-- apu模拟改为定点计算
-- 修复cpu中断处理
-- 新增动态从文件切换 bank功能，此模式只需要40KB 活跃 bank 缓冲区（PRG 32KB + CHR 8KB），文件句柄保持打开，但切换bank速度会下降，为低内存设计
+## v0.1.0
+
+- Improve CPU emulation (including all illegal instructions) 
+- Change APU emulation to fixed-point calculations 
+- Fix CPU interrupt handling 
+- Add dynamic file-based bank switching feature; this mode only requires a 40KB active bank buffer (PRG 32KB + CHR 8KB). The file handle remains open, but the bank switching speed will decrease, designed for low memory usage
 
 ## v0.0.4
 
@@ -52,6 +54,13 @@ The first beta version, which already supports CUP, PPU, mapper0 2, is already p
 ## master (开发中)
 
 - 
+
+## v0.1.0
+
+- 完善cpu模拟(包括所有非法指令)
+- apu模拟改为定点计算
+- 修复cpu中断处理
+- 新增动态从文件切换 bank功能，此模式只需要40KB 活跃 bank 缓冲区（PRG 32KB + CHR 8KB），文件句柄保持打开，但切换bank速度会下降，为低内存设计
 
 ## v0.0.4
 

@@ -31,11 +31,11 @@ gitee: [nes: c语言实现的nes模拟器 (gitee.com)](https://gitee.com/PeakRac
 
 **Simulator support：**
 
-- [x] CPU
+- [x] CPU (All instructions)
 
-- [x] PPU
+- [x] PPU (Simulating at pixel-level precision)
 
-- [x] APU
+- [x] APU (Fixed-point calculation)
 
 **mapper  support：**
 
