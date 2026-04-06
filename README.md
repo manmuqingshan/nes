@@ -118,11 +118,10 @@ gitee: https://gitee.com/PeakRacing/nes/releases
 - `NES_ENABLE_SOUND` can be set to 0 to turn off the APU to increase the running speed
 - `NES_RAM_LACK` can be set to 1, using a half-screen refresh to reduce RAM consumption (running at a slower speed)
 - You can configure `NES_FRAME_SKIP` to skip frames
+- `NES_ROM_STREAM` can be set to 1 to dynamically switch banks from a file. This mode only requires a 40KB active bank buffer (PRG 32KB, CHR 8KB). The file handle remains open, but the bank switching speed will decrease. It is designed for low memory.
 - If SPI 8-byte transmission is used for embedded platforms, the color anomaly configuration `NES_COLOR_SWAP` can be used to switch the large and small ends
 
 
-
-​	**In addition, the APU synthesis uses single floating-point calculations, and the code can optimize the single-floating-point calculation acceleration or not use single-floating-point calculations to speed up the operation in `nes_apu.c`**
 
 ## Showcase
 

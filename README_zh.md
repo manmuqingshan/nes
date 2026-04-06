@@ -116,11 +116,8 @@ gitee: https://gitee.com/PeakRacing/nes/releases
 - 可以将`NES_ENABLE_SOUND`设置为0关闭apu以增加运行速度
 - 可以将`NES_RAM_LACK`设置为1使用半屏刷新以减少ram消耗(运行速度会降低)
 - 可以自行配置`NES_FRAME_SKIP`进行跳帧
+- 可以将`NES_ROM_STREAM`设置为1动态从文件切换 bank，此模式只需要40KB 活跃 bank 缓冲区（PRG 32KB + CHR 8KB），文件句柄保持打开，但切换bank速度会下降，为低内存设计
 - 如果为嵌入式平台使用spi 8字节传输时颜色异常配置`NES_COLOR_SWAP`可进行大小端切换
-
-
-
-​	**另外，APU合成使用了单浮点数计算，代码在nes_apu.c中，可自行优化单浮点计算加速或者不使用单浮点计算以加速运行速度**
 
 ## 运行展示
 
