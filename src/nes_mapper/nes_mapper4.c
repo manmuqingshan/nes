@@ -114,6 +114,11 @@ static void nes_mapper_init(nes_t* nes) {
     mapper_reg.bank_values[6] = 0;
     mapper_reg.bank_values[7] = 1;
 
+    /* CHR-RAM: set up pattern table pointers before bank update */
+    if (nes->nes_rom.chr_rom_size == 0) {
+        nes_load_chrrom_8k(nes, 0, 0);
+    }
+
     mapper4_update_banks(nes);
 }
 
