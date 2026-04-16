@@ -66,21 +66,31 @@ int nes_load_file(nes_t* nes, const char* file_path ){
         nes->nes_rom.four_screen = nes_header_info.four_screen;
         nes->nes_rom.save_ram = nes_header_info.save;
 #if (NES_ROM_STREAM == 1)
-        /* Stream mode: only allocate active bank buffers, keep file open */
+        /* Stream mode: only allocate LRU cache buffers, keep file open */
         nes->nes_rom.prg_data_offset = (long)sizeof(nes_header_info) + (nes_header_info.trainer ? TRAINER_SIZE : 0);
         nes->nes_rom.chr_data_offset = nes->nes_rom.prg_data_offset + (long)PRG_ROM_UNIT_SIZE * nes->nes_rom.prg_rom_size;
-        /* PRG: 4 x 8KB bank buffers = 32KB */
-        nes->nes_rom.prg_rom = (uint8_t*)nes_malloc(8192 * 4);
+        /* PRG: NES_PRG_CACHE_SLOTS x 8KB LRU cache */
+        nes->nes_rom.prg_rom = (uint8_t*)nes_malloc(8192 * NES_PRG_CACHE_SLOTS);
         if (nes->nes_rom.prg_rom == NULL) {
             goto error;
         }
-        nes_memset(nes->nes_rom.prg_rom, 0, 8192 * 4);
-        /* CHR: 8 x 1KB bank buffers = 8KB */
-        nes->nes_rom.chr_rom = (uint8_t*)nes_malloc(1024 * 8);
+        nes_memset(nes->nes_rom.prg_rom, 0, 8192 * NES_PRG_CACHE_SLOTS);
+        /* CHR: NES_CHR_CACHE_SLOTS x 1KB LRU cache */
+        nes->nes_rom.chr_rom = (uint8_t*)nes_malloc(1024 * NES_CHR_CACHE_SLOTS);
         if (nes->nes_rom.chr_rom == NULL) {
             goto error;
         }
-        nes_memset(nes->nes_rom.chr_rom, 0, 1024 * 8);
+        nes_memset(nes->nes_rom.chr_rom, 0, 1024 * NES_CHR_CACHE_SLOTS);
+        /* Init LRU cache entries */
+        nes->nes_rom.cache_tick = 0;
+        for (int i = 0; i < NES_PRG_CACHE_SLOTS; i++) {
+            nes->nes_rom.prg_cache[i].tag = 0xFFFF;
+            nes->nes_rom.prg_cache[i].last_used = 0;
+        }
+        for (int i = 0; i < NES_CHR_CACHE_SLOTS; i++) {
+            nes->nes_rom.chr_cache[i].tag = 0xFFFF;
+            nes->nes_rom.chr_cache[i].last_used = 0;
+        }
         /* Keep file handle open for streaming */
         nes->nes_rom.rom_file = nes_file;
         nes_file = NULL;

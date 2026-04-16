@@ -124,6 +124,13 @@ typedef struct {
     };                                  /*  Default Expansion Device */
 } nes_header_nes2_t;
 
+#if (NES_ROM_STREAM == 1)
+typedef struct {
+    uint16_t tag;                       /*  source page index, 0xFFFF = empty */
+    uint16_t last_used;                 /*  LRU access timestamp */
+} nes_stream_cache_t;
+#endif
+
 typedef struct nes_rom_info{
     uint16_t prg_rom_size;
     uint16_t chr_rom_size;
@@ -138,6 +145,9 @@ typedef struct nes_rom_info{
     FILE*    rom_file;                  /*  ROM file handle (kept open for streaming) */
     long     prg_data_offset;           /*  PRG-ROM data start offset in file */
     long     chr_data_offset;           /*  CHR-ROM data start offset in file */
+    uint16_t cache_tick;                /*  global LRU access counter */
+    nes_stream_cache_t prg_cache[NES_PRG_CACHE_SLOTS];
+    nes_stream_cache_t chr_cache[NES_CHR_CACHE_SLOTS];
 #endif
 } nes_rom_info_t;
 

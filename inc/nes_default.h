@@ -57,6 +57,15 @@
 #define NES_ROM_STREAM          (0)       /* stream ROM banks from file instead of loading entire ROM into RAM */
 #endif
 
+#if (NES_ROM_STREAM == 1)
+#ifndef NES_PRG_CACHE_SLOTS
+#define NES_PRG_CACHE_SLOTS     (6)       /* number of 8KB PRG-ROM LRU cache slots (must > 4) */
+#endif
+#ifndef NES_CHR_CACHE_SLOTS
+#define NES_CHR_CACHE_SLOTS     (12)      /* number of 1KB CHR-ROM LRU cache slots (must > 8) */
+#endif
+#endif
+
 #if (NES_RAM_LACK == 1)
 #define NES_DRAW_SIZE           (NES_WIDTH * NES_HEIGHT / 2) 
 #else
