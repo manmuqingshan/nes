@@ -25,7 +25,7 @@ static void nes_mapper_init(nes_t* nes) {
 }
 
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
-    uint8_t prg_banks = nes->nes_rom.prg_rom_size;
+    uint16_t prg_banks = nes->nes_rom.prg_rom_size;
     if (address >= 0x9000 && address <= 0x9FFF) {
         /* $9000-$9FFF: bit 4 = one-screen nametable select */
         nes_ppu_screen_mirrors(nes, (data & 0x10) ? NES_MIRROR_ONE_SCREEN1 : NES_MIRROR_ONE_SCREEN0);

@@ -34,15 +34,10 @@ static void nes_mapper_init(nes_t* nes){
           |||
           +++-- Select 16 KB PRG ROM bank for CPU $C000-$FFFF
 */
-typedef struct {
-    uint8_t P:3;
-    uint8_t :5;
-}bank_select_t;
 
-static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t date) {
+static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     (void)address;
-    const bank_select_t* bank_select = (bank_select_t*)&date;
-    nes_load_prgrom_16k(nes, 1, bank_select->P);
+    nes_load_prgrom_16k(nes, 1, data & 0x07);
 }
 
 
@@ -50,6 +45,6 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t date) {
 int nes_mapper180_init(nes_t* nes){
     nes->nes_mapper.mapper_init = nes_mapper_init;
     nes->nes_mapper.mapper_write = nes_mapper_write;
-    return 0;
+    return NES_OK;
 }
 

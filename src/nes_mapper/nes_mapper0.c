@@ -39,6 +39,6 @@ static void nes_mapper_write(nes_t* nes, uint16_t write_addr, uint8_t data){
 int nes_mapper0_init(nes_t* nes){
     nes->nes_mapper.mapper_init = nes_mapper_init;
     nes->nes_mapper.mapper_write = nes_mapper_write;
-    return 0;
+    return NES_OK;
 }
 

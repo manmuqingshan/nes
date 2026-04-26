@@ -15,34 +15,35 @@
  */
 
 #include "nes.h"
+#include "nes_mapper.h"
 
-/* https://www.nesdev.org/wiki/INES_Mapper_177 */
-static void nes_mapper_init(nes_t* nes){
-    // CPU $8000-$FFFF: 32 KB switchable PRG ROM bank
+/* https://www.nesdev.org/wiki/INES_Mapper_240 */
+
+static void nes_mapper_init(nes_t* nes) {
+    // CPU $8000-$FFFF: 32 KB switchable PRG ROM bank.
     nes_load_prgrom_32k(nes, 0, 0);
-    // CHR capacity: 8 KiB ROM.
+    // CHR $0000-$1FFF: 8 KB switchable CHR ROM bank.
     nes_load_chrrom_8k(nes, 0, 0);
 }
 
 /*
-            7  bit  0
-            ---------
-$8000-FFFF: ..MP PPPP
-              |+-++++- Select 32 KiB PRG-ROM bank at CPU $8000-$FFFF
-              +------- Select nametable mirroring
-                       0: Vertical
-                       1: Horizontal
+    Register at $4020-$40FF:
+    7  bit  0
+    ---- ----
+    PPPP CCCC
+    |||| ||||
+    |||| ++++- Select 8 KB CHR ROM bank at $0000-$1FFF
+    ++++------ Select 32 KB PRG ROM bank at $8000-$FFFF
 */
-
-static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
-    (void)address;
-    nes_load_prgrom_32k(nes, 0, data & 0x1F);
-    nes_ppu_screen_mirrors(nes, (data & 0x20) ? NES_MIRROR_HORIZONTAL : NES_MIRROR_VERTICAL);
+static void nes_mapper_apu_write(nes_t* nes, uint16_t address, uint8_t data) {
+    if (address >= 0x4020 && address <= 0x40FF) {
+        nes_load_prgrom_32k(nes, 0, (data >> 4) & 0x0F);
+        nes_load_chrrom_8k(nes, 0, data & 0x0F);
+    }
 }
 
-int nes_mapper177_init(nes_t* nes){
+int nes_mapper240_init(nes_t* nes) {
     nes->nes_mapper.mapper_init = nes_mapper_init;
-    nes->nes_mapper.mapper_write = nes_mapper_write;
+    nes->nes_mapper.mapper_apu  = nes_mapper_apu_write;
     return NES_OK;
 }
-

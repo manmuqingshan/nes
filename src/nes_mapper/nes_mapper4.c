@@ -217,5 +217,5 @@ int nes_mapper4_init(nes_t* nes) {
     nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write = nes_mapper_write;
     nes->nes_mapper.mapper_hsync = nes_mapper_hsync;
-    return 0;
+    return NES_OK;
 }

@@ -178,5 +178,5 @@ int nes_mapper1_init(nes_t* nes){
     nes->nes_mapper.mapper_init = nes_mapper_init;
     nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write = nes_mapper_write;
-    return 0;
+    return NES_OK;
 }

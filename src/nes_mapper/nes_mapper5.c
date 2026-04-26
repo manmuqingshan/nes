@@ -115,7 +115,7 @@ static void mapper5_update_prg(nes_t* nes) {
             for (int i = 0; i < 4; i++) {
                 uint8_t reg = mapper_reg->prg_bank[i + 1];
                 if (i == 3 || (reg & 0x80)) {
-                    nes_load_prgrom_8k(nes, i, (reg & 0x7F) % count);
+                    nes_load_prgrom_8k(nes, (uint8_t)i, (reg & 0x7F) % count);
                 }
             }
             break;
@@ -132,29 +132,29 @@ static void mapper5_apply_chr_sprite(nes_t* nes) {
         case 0: { /* 8KB from $5127 */
             uint8_t base = (uint8_t)(mapper_reg->chr_bank_spr[7] * 8);
             for (int i = 0; i < 8; i++)
-                nes_load_chrrom_1k(nes, i, (uint8_t)((base + i) % count));
+                nes_load_chrrom_1k(nes, (uint8_t)i, (uint8_t)((base + i) % count));
             break;
         }
         case 1: { /* 4KB from $5123, $5127 */
             uint8_t base0 = (uint8_t)(mapper_reg->chr_bank_spr[3] * 4);
             uint8_t base1 = (uint8_t)(mapper_reg->chr_bank_spr[7] * 4);
             for (int i = 0; i < 4; i++)
-                nes_load_chrrom_1k(nes, i, (uint8_t)((base0 + i) % count));
+                nes_load_chrrom_1k(nes, (uint8_t)i, (uint8_t)((base0 + i) % count));
             for (int i = 0; i < 4; i++)
-                nes_load_chrrom_1k(nes, 4 + i, (uint8_t)((base1 + i) % count));
+                nes_load_chrrom_1k(nes, (uint8_t)(4 + i), (uint8_t)((base1 + i) % count));
             break;
         }
         case 2: { /* 2KB from $5121, $5123, $5125, $5127 */
             for (int j = 0; j < 4; j++) {
                 uint8_t base = (uint8_t)(mapper_reg->chr_bank_spr[j * 2 + 1] * 2);
-                nes_load_chrrom_1k(nes, j * 2, (uint8_t)(base % count));
-                nes_load_chrrom_1k(nes, j * 2 + 1, (uint8_t)((base + 1) % count));
+                nes_load_chrrom_1k(nes, (uint8_t)(j * 2), (uint8_t)(base % count));
+                nes_load_chrrom_1k(nes, (uint8_t)(j * 2 + 1), (uint8_t)((base + 1) % count));
             }
             break;
         }
         case 3: { /* 1KB from $5120-$5127 */
             for (int i = 0; i < 8; i++)
-                nes_load_chrrom_1k(nes, i, mapper_reg->chr_bank_spr[i] % count);
+                nes_load_chrrom_1k(nes, (uint8_t)i, (uint8_t)(mapper_reg->chr_bank_spr[i] % count));
             break;
         }
     }
@@ -169,15 +169,15 @@ static void mapper5_apply_chr_bg(nes_t* nes) {
         case 0: { /* 8KB from $512B */
             uint8_t base = (uint8_t)(mapper_reg->chr_bank_bg[3] * 8);
             for (int i = 0; i < 8; i++)
-                nes_load_chrrom_1k(nes, i, (uint8_t)((base + i) % count));
+                nes_load_chrrom_1k(nes, (uint8_t)i, (uint8_t)((base + i) % count));
             break;
         }
         case 1: { /* 4KB from $512B, duplicated to both halves */
             uint8_t base = (uint8_t)(mapper_reg->chr_bank_bg[3] * 4);
             for (int i = 0; i < 4; i++) {
                 uint8_t bank = (uint8_t)((base + i) % count);
-                nes_load_chrrom_1k(nes, i, bank);
-                nes_load_chrrom_1k(nes, 4 + i, bank);
+                nes_load_chrrom_1k(nes, (uint8_t)i, bank);
+                nes_load_chrrom_1k(nes, (uint8_t)(4 + i), bank);
             }
             break;
         }
@@ -196,9 +196,9 @@ static void mapper5_apply_chr_bg(nes_t* nes) {
         }
         case 3: { /* 1KB from $5128-$512B, mirrored to upper half */
             for (int i = 0; i < 4; i++) {
-                uint8_t bank = mapper_reg->chr_bank_bg[i] % count;
-                nes_load_chrrom_1k(nes, i, bank);
-                nes_load_chrrom_1k(nes, 4 + i, bank);
+                uint8_t bank = (uint8_t)(mapper_reg->chr_bank_bg[i] % count);
+                nes_load_chrrom_1k(nes, (uint8_t)i, bank);
+                nes_load_chrrom_1k(nes, (uint8_t)(4 + i), bank);
             }
             break;
         }

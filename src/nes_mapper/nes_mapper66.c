@@ -16,34 +16,30 @@
 
 #include "nes.h"
 
-/* https://www.nesdev.org/wiki/INES_Mapper_008 */
+/* https://www.nesdev.org/wiki/GxROM */
 
 static void nes_mapper_init(nes_t* nes) {
-    // CPU $8000-$BFFF: 16 KB switchable PRG ROM bank
-    nes_load_prgrom_16k(nes, 0, 0);
-    // CPU $C000-$FFFF: 16 KB PRG ROM bank, fixed to bank 1
-    nes_load_prgrom_16k(nes, 1, 1);
-    // CHR capacity: 8 KiB switchable ROM
+    // CPU $8000-$FFFF: 32 KB switchable PRG ROM bank
+    nes_load_prgrom_32k(nes, 0, 0);
+    // CHR capacity: 8 KiB ROM bank
     nes_load_chrrom_8k(nes, 0, 0);
 }
 
 /*
-    Bank select ($8000-$FFFF)
     7  bit  0
     ---- ----
-    PPPP PCCC
-    |||||  |||
-    +++++--+++ Select 16 KB PRG ROM bank for CPU $8000-$BFFF
-           +++ Select  8 KB CHR ROM bank for PPU $0000-$1FFF
+    xxPP xxCC
+      ||   ||
+      ||   ++- Select 8 KB CHR ROM bank for PPU $0000-$1FFF
+      ++------ Select 32 KB PRG ROM bank for CPU $8000-$FFFF
 */
-
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     (void)address;
-    nes_load_prgrom_16k(nes, 0, (data >> 3) & 0x1F);
-    nes_load_chrrom_8k(nes, 0, data & 0x07);
+    nes_load_prgrom_32k(nes, 0, (data >> 4) & 0x03);
+    nes_load_chrrom_8k(nes, 0, data & 0x03);
 }
 
-int nes_mapper8_init(nes_t* nes) {
+int nes_mapper66_init(nes_t* nes) {
     nes->nes_mapper.mapper_init  = nes_mapper_init;
     nes->nes_mapper.mapper_write = nes_mapper_write;
     return NES_OK;
