@@ -33,9 +33,18 @@ typedef struct  {
     };
 } mapper1_register_t;
 
-static mapper1_register_t mapper_register = {0};
+
+static void nes_mapper_deinit(nes_t* nes) {
+    nes_free(nes->nes_mapper.mapper_register);
+    nes->nes_mapper.mapper_register = NULL;
+}
 
 static void nes_mapper_init(nes_t* nes){
+    if (nes->nes_mapper.mapper_register == NULL) {
+        nes->nes_mapper.mapper_register = nes_malloc(sizeof(mapper1_register_t));
+        if (nes->nes_mapper.mapper_register == NULL) return;
+    }
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
     // CPU $6000-$7FFF: 8 KB PRG-RAM bank, (optional)
 
     // CPU $8000-$BFFF: 16 KB PRG-ROM bank, either switchable or fixed to the first bank
@@ -49,13 +58,14 @@ static void nes_mapper_init(nes_t* nes){
     // CHR capacity:
     nes_load_chrrom_8k(nes, 0, 0);
 
-    nes_memset(&mapper_register, 0x00, sizeof(mapper1_register_t));
-    mapper_register.shift = 0x10;
+    nes_memset(r, 0x00, sizeof(mapper1_register_t));
+    r->shift = 0x10;
 }
 
 static inline void nes_mapper_write_control(nes_t* nes, uint8_t data) {
-    mapper_register.control_byte = data;
-    nes_ppu_screen_mirrors(nes, mapper_register.control.M);
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
+    r->control_byte = data;
+    nes_ppu_screen_mirrors(nes, r->control.M);
 }
 /*
 CHR bank 0 (internal, $A000-$BFFF)
@@ -66,10 +76,11 @@ CHR bank 0 (internal, $A000-$BFFF)
     +++++- Select 4 KB or 8 KB CHR bank at PPU $0000 (low bit ignored in 8 KB mode)
 */
 static inline void nes_mapper_write_chrbank0(nes_t* nes) {
-    if (mapper_register.control.C) {
-        nes_load_chrrom_4k(nes, 0, mapper_register.shift);
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
+    if (r->control.C) {
+        nes_load_chrrom_4k(nes, 0, r->shift);
     } else {
-        nes_load_chrrom_8k(nes, 0, mapper_register.shift >> 1);
+        nes_load_chrrom_8k(nes, 0, r->shift >> 1);
     }
 }
 /*
@@ -81,8 +92,9 @@ CHR bank 1 (internal, $C000-$DFFF)
     +++++- Select 4 KB CHR bank at PPU $1000 (ignored in 8 KB mode)
 */
 static inline void nes_mapper_write_chrbank1(nes_t* nes) {
-    if (mapper_register.control.C) 
-        nes_load_chrrom_4k(nes, 1, mapper_register.shift);
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
+    if (r->control.C) 
+        nes_load_chrrom_4k(nes, 1, r->shift);
 }
 /*
 PRG bank (internal, $E000-$FFFF)
@@ -96,8 +108,9 @@ PRG bank (internal, $E000-$FFFF)
         1: fixed bank affects A16-A14 and bit 3 directly controls A17)
 */
 static inline void nes_mapper_write_prgbank(nes_t* nes) {
-    const uint8_t bankid = mapper_register.shift & (uint8_t)0x0F;
-    switch (mapper_register.control.P){
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
+    const uint8_t bankid = r->shift & (uint8_t)0x0F;
+    switch (r->control.P){
     case 0: case 1:
         // 32KB mode - switch both 16KB banks together
         nes_load_prgrom_32k(nes, 0, bankid & (uint8_t)0x0E);
@@ -116,9 +129,10 @@ static inline void nes_mapper_write_prgbank(nes_t* nes) {
 }
 
 static inline void nes_mapper_write_register(nes_t* nes, uint16_t address) {
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
     switch ((address & 0x7FFF) >> 13){
     case 0:
-        nes_mapper_write_control(nes, mapper_register.shift);
+        nes_mapper_write_control(nes, r->shift);
         break;
     case 1:
         nes_mapper_write_chrbank0(nes);
@@ -143,24 +157,26 @@ Load register ($8000-$FFFF)
                 locking PRG-ROM at $C000-$FFFF to the last bank.
 */
 static void nes_mapper_write(nes_t* nes, uint16_t write_addr, uint8_t data){
+    mapper1_register_t* r = (mapper1_register_t*)nes->nes_mapper.mapper_register;
     if (data & (uint8_t)0x80){
-        mapper_register.shift = 0x10; // reset shift register
+        r->shift = 0x10; // reset shift register
         // Control = Control OR $0C, locking PRG-ROM at $C000-$FFFF to the last bank
-        mapper_register.control_byte |= 0x0C;
-        nes_ppu_screen_mirrors(nes, mapper_register.control.M);
+        r->control_byte |= 0x0C;
+        nes_ppu_screen_mirrors(nes, r->control.M);
     }else {
-        const uint8_t finished = mapper_register.shift & 1;
-        mapper_register.shift >>= 1;
-        mapper_register.shift |= (data & 1) << 4;
+        const uint8_t finished = r->shift & 1;
+        r->shift >>= 1;
+        r->shift |= (data & 1) << 4;
         if (finished) {
             nes_mapper_write_register(nes, write_addr);
-            mapper_register.shift = 0x10;
+            r->shift = 0x10;
         }
     }
 }
 
 int nes_mapper1_init(nes_t* nes){
     nes->nes_mapper.mapper_init = nes_mapper_init;
+    nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write = nes_mapper_write;
     return 0;
 }

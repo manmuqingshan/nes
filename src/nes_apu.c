@@ -240,7 +240,6 @@ static inline void nes_apu_play(nes_t* nes){
     }
 }
 
-extern void nes_cpu_irq(nes_t* nes);
 static inline void nes_apu_frame_irq(nes_t *nes){
     if (nes->nes_apu.irq_inhibit_flag==0){
         nes->nes_apu.frame_interrupt = 1;

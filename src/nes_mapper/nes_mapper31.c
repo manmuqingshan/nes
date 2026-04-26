@@ -43,31 +43,45 @@ typedef struct {
     uint8_t  prg_buf[32768];    /* 32KB PRG staging buffer */
 } mapper31_state_t;
 
-static mapper31_state_t mapper31_state;
+static mapper31_state_t* mapper31_get(nes_t* nes) {
+    return (mapper31_state_t*)nes->nes_mapper.mapper_register;
+}
+
+static void nes_mapper_deinit(nes_t* nes) {
+    nes_free(nes->nes_mapper.mapper_register);
+    nes->nes_mapper.mapper_register = NULL;
+}
 
 static void mapper31_load_4k(nes_t* nes, uint8_t slot, uint8_t page) {
+    mapper31_state_t* state = mapper31_get(nes);
     uint32_t prg_4k_count = (uint32_t)nes->nes_rom.prg_rom_size * 4;
     uint32_t idx = page % prg_4k_count;
-    mapper31_state.regs[slot] = page;
+    state->regs[slot] = page;
 #if (NES_ROM_STREAM == 1)
     nes_fseek(nes->nes_rom.rom_file,
               nes->nes_rom.prg_data_offset + (long)4096 * idx, SEEK_SET);
-    nes_fread(mapper31_state.prg_buf + (uint32_t)slot * 4096, 4096, 1,
+    nes_fread(state->prg_buf + (uint32_t)slot * 4096, 4096, 1,
               nes->nes_rom.rom_file);
 #else
-    nes_memcpy(mapper31_state.prg_buf + (uint32_t)slot * 4096,
+    nes_memcpy(state->prg_buf + (uint32_t)slot * 4096,
                nes->nes_rom.prg_rom + (uint32_t)idx * 4096, 4096);
 #endif
 }
 
 static void mapper31_sync_banks(nes_t* nes) {
-    nes->nes_cpu.prg_banks[0] = mapper31_state.prg_buf;
-    nes->nes_cpu.prg_banks[1] = mapper31_state.prg_buf + 8192;
-    nes->nes_cpu.prg_banks[2] = mapper31_state.prg_buf + 16384;
-    nes->nes_cpu.prg_banks[3] = mapper31_state.prg_buf + 24576;
+    mapper31_state_t* state = mapper31_get(nes);
+    nes->nes_cpu.prg_banks[0] = state->prg_buf;
+    nes->nes_cpu.prg_banks[1] = state->prg_buf + 8192;
+    nes->nes_cpu.prg_banks[2] = state->prg_buf + 16384;
+    nes->nes_cpu.prg_banks[3] = state->prg_buf + 24576;
 }
 
 static void nes_mapper_init(nes_t* nes) {
+    if (nes->nes_mapper.mapper_register == NULL) {
+        nes->nes_mapper.mapper_register = nes_malloc(sizeof(mapper31_state_t));
+        if (nes->nes_mapper.mapper_register == NULL) return;
+    }
+    nes_memset(nes->nes_mapper.mapper_register, 0, sizeof(mapper31_state_t));
     uint32_t prg_4k_count = (uint32_t)nes->nes_rom.prg_rom_size * 4;
 
     /* Init: map last 32KB of PRG (wraps for small ROMs) */
@@ -99,6 +113,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
 
 int nes_mapper31_init(nes_t* nes) {
     nes->nes_mapper.mapper_init = nes_mapper_init;
+    nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write = nes_mapper_write;
     nes->nes_mapper.mapper_apu = nes_mapper_apu_write;
     return 0;

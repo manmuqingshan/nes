@@ -141,6 +141,9 @@ error:
 
 
 int nes_unload_file(nes_t* nes){
+    if (nes->nes_mapper.mapper_deinit) {
+        nes->nes_mapper.mapper_deinit(nes);
+    }
 #if (NES_ROM_STREAM == 1)
     if (nes->nes_rom.rom_file){
         nes_fclose(nes->nes_rom.rom_file);
@@ -223,6 +226,8 @@ error:
 }
 
 int nes_unload_rom(nes_t* nes){
-    (void)nes;
+    if (nes->nes_mapper.mapper_deinit) {
+        nes->nes_mapper.mapper_deinit(nes);
+    }
     return NES_OK;
 }

@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include "nes_default.h"
+
 #ifdef __cplusplus
     extern "C" {
 #endif
@@ -96,6 +98,7 @@ typedef struct nes_cpu{
 
 void nes_cpu_init(nes_t *nes);
 void nes_cpu_reset(nes_t* nes);
+void nes_cpu_irq(nes_t* nes);
 
 void nes_opcode(nes_t* nes,uint16_t ticks);
 
