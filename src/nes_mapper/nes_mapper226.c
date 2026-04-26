@@ -37,7 +37,7 @@ static void mapper226_update(nes_t* nes) {
     } else {
         /* 16KB mode */
         nes_load_prgrom_16k(nes, 0, prg);
-        nes_load_prgrom_16k(nes, 2, prg);
+        nes_load_prgrom_16k(nes, 1, prg);
     }
     if (nes->nes_rom.four_screen == 0) {
         nes_ppu_screen_mirrors(nes, (r->reg0 & 0x80u) ? NES_MIRROR_VERTICAL : NES_MIRROR_HORIZONTAL);

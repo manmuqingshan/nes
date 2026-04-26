@@ -59,11 +59,11 @@ static void mapper155_apply(nes_t* nes) {
             break;
         case 2u:
             nes_load_prgrom_16k(nes, 0, 0);
-            nes_load_prgrom_16k(nes, 2, (uint16_t)(m->prg % prg_banks16));
+            nes_load_prgrom_16k(nes, 1, (uint16_t)(m->prg % prg_banks16));
             break;
         case 3u:
             nes_load_prgrom_16k(nes, 0, (uint16_t)(m->prg % prg_banks16));
-            nes_load_prgrom_16k(nes, 2, (uint16_t)(prg_banks16 - 1u));
+            nes_load_prgrom_16k(nes, 1, (uint16_t)(prg_banks16 - 1u));
             break;
         }
     }
@@ -75,7 +75,7 @@ static void mapper155_apply(nes_t* nes) {
         if (chr8 == 0u) chr8 = 1u;
         if (chr_mode) {
             nes_load_chrrom_4k(nes, 0, (uint8_t)(m->chr0 % chr4));
-            nes_load_chrrom_4k(nes, 4, (uint8_t)(m->chr1 % chr4));
+            nes_load_chrrom_4k(nes, 1, (uint8_t)(m->chr1 % chr4));
         } else {
             nes_load_chrrom_8k(nes, 0, (uint8_t)((m->chr0 >> 1u) % chr8));
         }

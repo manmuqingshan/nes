@@ -51,7 +51,7 @@ static void mapper151_update_banks(nes_t* nes) {
         uint8_t c4 = (uint8_t)(m->chr_bank_count / 4u);
         if (c4 == 0u) c4 = 1u;
         nes_load_chrrom_4k(nes, 0, (uint8_t)(m->chr[0] % c4));
-        nes_load_chrrom_4k(nes, 4, (uint8_t)(m->chr[1] % c4));
+        nes_load_chrrom_4k(nes, 1, (uint8_t)(m->chr[1] % c4));
     }
     if (nes->nes_rom.four_screen == 0)
         nes_ppu_screen_mirrors(nes, m->mirror ? NES_MIRROR_HORIZONTAL : NES_MIRROR_VERTICAL);

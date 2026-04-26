@@ -35,7 +35,7 @@ static void mapper232_update(nes_t* nes) {
     uint8_t inner = (uint8_t)(base | (r->inner & 0x03u));
     uint8_t last  = (uint8_t)(base | 0x03u);
     nes_load_prgrom_16k(nes, 0, inner);
-    nes_load_prgrom_16k(nes, 2, last);
+    nes_load_prgrom_16k(nes, 1, last);
 }
 
 static void nes_mapper_deinit(nes_t* nes) {

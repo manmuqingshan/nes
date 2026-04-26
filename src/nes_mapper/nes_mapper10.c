@@ -34,7 +34,7 @@ static void mapper10_update_prg(nes_t* nes) {
     nes_mapper10_t* r = (nes_mapper10_t*)nes->nes_mapper.mapper_register;
     uint16_t num_16k = nes->nes_rom.prg_rom_size;
     nes_load_prgrom_16k(nes, 0, r->prg_bank % num_16k);
-    nes_load_prgrom_16k(nes, 2, num_16k - 1);
+    nes_load_prgrom_16k(nes, 1, num_16k - 1);
 }
 
 static void nes_mapper_init(nes_t* nes) {

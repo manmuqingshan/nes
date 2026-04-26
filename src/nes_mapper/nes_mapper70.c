@@ -36,7 +36,7 @@ static void nes_mapper_deinit(nes_t* nes) {
 
 static void nes_mapper_init(nes_t* nes) {
     nes_load_prgrom_16k(nes, 0, 0);
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
     nes_load_chrrom_8k(nes, 0, 0);
     nes_ppu_screen_mirrors(nes, nes->nes_rom.mirroring_type ? NES_MIRROR_VERTICAL : NES_MIRROR_HORIZONTAL);
 }

@@ -56,7 +56,7 @@ static void mapper211_update_prg(nes_t* nes) {
         uint8_t b16 = (uint8_t)(r->prg_bank_count / 2u);
         if (b16 == 0u) b16 = 1u;
         nes_load_prgrom_16k(nes, 0, (uint16_t)(r->prg[0] % b16));
-        nes_load_prgrom_16k(nes, 2, (uint16_t)(r->prg[2] % b16));
+        nes_load_prgrom_16k(nes, 1, (uint16_t)(r->prg[2] % b16));
         break;
     }
     case 2u: {

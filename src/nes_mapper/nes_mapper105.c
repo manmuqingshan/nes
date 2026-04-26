@@ -54,11 +54,11 @@ static void mapper105_update_banks(nes_t* nes) {
         break;
     case 2u:
         nes_load_prgrom_16k(nes, 0, 0);
-        nes_load_prgrom_16k(nes, 2, (uint16_t)(bank % prg16));
+        nes_load_prgrom_16k(nes, 1, (uint16_t)(bank % prg16));
         break;
     case 3u:
         nes_load_prgrom_16k(nes, 0, (uint16_t)(bank % prg16));
-        nes_load_prgrom_16k(nes, 2, (uint16_t)(prg16 - 1u));
+        nes_load_prgrom_16k(nes, 1, (uint16_t)(prg16 - 1u));
         break;
     }
 

@@ -25,7 +25,7 @@
 static void nes_mapper_init(nes_t* nes) {
     /* Karaoke Studio ROM starts from bank 4 (XOR with 4 on bank 0 gives 4) */
     nes_load_prgrom_16k(nes, 0, 4);
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, 0);
     }

@@ -43,7 +43,7 @@ static void mapper104_update_banks(nes_t* nes) {
     uint8_t bank0  = (uint8_t)((base | (m->inner & 0x03u)) % prg16);
     uint8_t bank1  = (uint8_t)((base | 0x03u) % prg16);
     nes_load_prgrom_16k(nes, 0, (uint16_t)bank0);
-    nes_load_prgrom_16k(nes, 2, (uint16_t)bank1);
+    nes_load_prgrom_16k(nes, 1, (uint16_t)bank1);
     if (nes->nes_rom.chr_rom_size == 0u) nes_load_chrrom_8k(nes, 0, 0);
 }
 

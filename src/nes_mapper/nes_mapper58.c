@@ -38,7 +38,7 @@ static void nes_mapper_sram(nes_t* nes, uint16_t address, uint8_t data) {
         /* 16KB mode */
         uint8_t b = (uint8_t)(data & 0x07u);
         nes_load_prgrom_16k(nes, 0, b);
-        nes_load_prgrom_16k(nes, 2, (uint8_t)(b | 0x07u));
+        nes_load_prgrom_16k(nes, 1, (uint8_t)(b | 0x07u));
     } else {
         nes_load_prgrom_32k(nes, 0, (uint16_t)(data & 0x07u));
     }

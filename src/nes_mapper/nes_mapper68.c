@@ -83,7 +83,7 @@ static void nes_mapper_init(nes_t* nes) {
     nes_memset(r, 0, sizeof(*r));
 
     nes_load_prgrom_16k(nes, 0, 0);
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
     for (uint8_t i = 0; i < 4; i++) {
         r->chr[i] = i;
         mapper68_load_chr2k(nes, i, i);

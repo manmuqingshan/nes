@@ -41,7 +41,7 @@ static void mapper30_update_banks(nes_t* nes) {
     uint8_t prg16 = (uint8_t)(m->prg_bank_count / 2u);
     if (prg16 == 0u) prg16 = 1u;
     nes_load_prgrom_16k(nes, 0, (uint16_t)(m->prg_bank % prg16));
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(prg16 - 1u));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(prg16 - 1u));
     /* CHR-RAM: always use CHR-RAM (chr_rom_size == 0) */
     if (nes->nes_rom.chr_rom_size == 0u) nes_load_chrrom_8k(nes, 0, 0);
     if (nes->nes_rom.four_screen == 0)

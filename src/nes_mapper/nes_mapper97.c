@@ -32,7 +32,7 @@ static const nes_mirror_type_t mapper97_mirror[4] = {
 
 static void nes_mapper_init(nes_t* nes) {
     nes_load_prgrom_16k(nes, 0, 0);
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, 0);
     }
@@ -40,7 +40,7 @@ static void nes_mapper_init(nes_t* nes) {
 
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     (void)address;
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(data & 0x3Fu));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(data & 0x3Fu));
     if (nes->nes_rom.four_screen == 0) {
         nes_ppu_screen_mirrors(nes, mapper97_mirror[(data >> 6) & 0x03u]);
     }

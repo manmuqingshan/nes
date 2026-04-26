@@ -48,7 +48,7 @@ static void mapper153_update_banks(nes_t* nes) {
     uint8_t prg  = (uint8_t)((outer_off + m->prg) % m->prg_bank_count);
 
     nes_load_prgrom_16k(nes, 0, (uint16_t)(prg / 2u));
-    nes_load_prgrom_16k(nes, 2, (uint16_t)((outer_off + (last & ~1u)) / 2u));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)((outer_off + (last & ~1u)) / 2u));
 
     if (m->chr_bank_count > 0u) {
         for (uint8_t i = 0u; i < 8u; i++)

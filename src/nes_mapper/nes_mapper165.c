@@ -44,7 +44,7 @@ static void mapper165_update_banks(nes_t* nes) {
     nes_load_prgrom_8k(nes, 3, last4);
     if (m->chr_bank_count > 0u) {
         nes_load_chrrom_4k(nes, 0, (uint8_t)(m->chr_banks[0][m->latch[0]] % (m->chr_bank_count / 4u > 0u ? m->chr_bank_count / 4u : 1u)));
-        nes_load_chrrom_4k(nes, 4, (uint8_t)(m->chr_banks[1][m->latch[1]] % (m->chr_bank_count / 4u > 0u ? m->chr_bank_count / 4u : 1u)));
+        nes_load_chrrom_4k(nes, 1, (uint8_t)(m->chr_banks[1][m->latch[1]] % (m->chr_bank_count / 4u > 0u ? m->chr_bank_count / 4u : 1u)));
     } else {
         nes_load_chrrom_8k(nes, 0, 0);
     }

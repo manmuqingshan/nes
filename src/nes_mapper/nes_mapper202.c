@@ -23,7 +23,7 @@
 
 static void nes_mapper_init(nes_t* nes) {
     nes_load_prgrom_16k(nes, 0, 0);
-    nes_load_prgrom_16k(nes, 2, 1);
+    nes_load_prgrom_16k(nes, 1, 1);
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, 0);
     }
@@ -33,7 +33,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     (void)data;
     uint8_t bank = (uint8_t)((address >> 1) & 0x07u);
     nes_load_prgrom_16k(nes, 0, bank);
-    nes_load_prgrom_16k(nes, 2, (uint8_t)(bank + 1u));
+    nes_load_prgrom_16k(nes, 1, (uint8_t)(bank + 1u));
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, bank);
     }

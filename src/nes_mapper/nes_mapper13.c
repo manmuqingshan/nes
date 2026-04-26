@@ -25,14 +25,14 @@ static void nes_mapper_init(nes_t* nes) {
     nes_load_prgrom_32k(nes, 0, 0);
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_4k(nes, 0, 0);
-        nes_load_chrrom_4k(nes, 4, 0);
+        nes_load_chrrom_4k(nes, 1, 0);
     }
 }
 
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     (void)address;
     if (nes->nes_rom.chr_rom_size > 0) {
-        nes_load_chrrom_4k(nes, 4, data & 0x03u);
+        nes_load_chrrom_4k(nes, 1, data & 0x03u);
     }
 }
 

@@ -46,7 +46,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
         /* 16KB mode */
         uint16_t prg = (uint16_t)((outer << 2u) | inner);
         nes_load_prgrom_16k(nes, 0, prg);
-        nes_load_prgrom_16k(nes, 2, prg);
+        nes_load_prgrom_16k(nes, 1, prg);
     } else {
         nes_load_prgrom_32k(nes, 0, (uint16_t)((outer << 1u) | (inner >> 1u)));
     }

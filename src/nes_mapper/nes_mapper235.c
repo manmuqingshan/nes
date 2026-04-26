@@ -40,7 +40,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     if (address & 0x100u) {
         /* 16KB mode: both halves same bank */
         nes_load_prgrom_16k(nes, 0, prg);
-        nes_load_prgrom_16k(nes, 2, prg);
+        nes_load_prgrom_16k(nes, 1, prg);
     } else {
         nes_load_prgrom_32k(nes, 0, (uint16_t)(prg >> 1));
     }

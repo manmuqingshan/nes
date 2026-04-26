@@ -54,7 +54,7 @@ static void nes_mapper_init(nes_t* nes) {
         nes_load_chrrom_8k(nes, 0, 0);
     } else {
         nes_load_chrrom_4k(nes, 0, 0);
-        nes_load_chrrom_4k(nes, 4, 0);
+        nes_load_chrrom_4k(nes, 1, 0);
     }
 }
 
@@ -80,7 +80,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
         r->chr_hi[1] = (data >> 2) & 0x01u;
         if (nes->nes_rom.chr_rom_size > 0) {
             nes_load_chrrom_4k(nes, 0, (uint8_t)((r->chr_hi[0] << 4) | r->chr_lo[0]));
-            nes_load_chrrom_4k(nes, 4, (uint8_t)((r->chr_hi[1] << 4) | r->chr_lo[1]));
+            nes_load_chrrom_4k(nes, 1, (uint8_t)((r->chr_hi[1] << 4) | r->chr_lo[1]));
         }
         break;
     case 0xA000u:
@@ -96,7 +96,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     case 0xC000u:
         r->chr_lo[1] = data & 0x0Fu;
         if (nes->nes_rom.chr_rom_size > 0) {
-            nes_load_chrrom_4k(nes, 4, (uint8_t)((r->chr_hi[1] << 4) | r->chr_lo[1]));
+            nes_load_chrrom_4k(nes, 1, (uint8_t)((r->chr_hi[1] << 4) | r->chr_lo[1]));
         }
         break;
     default:

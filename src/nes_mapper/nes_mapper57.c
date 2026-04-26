@@ -27,7 +27,7 @@
 
 static void nes_mapper_init(nes_t* nes) {
     nes_load_prgrom_16k(nes, 0, 0);
-    nes_load_prgrom_16k(nes, 2, 7);
+    nes_load_prgrom_16k(nes, 1, 7);
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, 0);
     }
@@ -45,7 +45,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
         /* 16KB mode: inner bank in first half, last bank of block in second */
         uint8_t b = (uint8_t)((outer << 3u) | inner);
         nes_load_prgrom_16k(nes, 0, b);
-        nes_load_prgrom_16k(nes, 2, (uint8_t)((outer << 3u) | 7u));
+        nes_load_prgrom_16k(nes, 1, (uint8_t)((outer << 3u) | 7u));
     }
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, chr_bank);

@@ -26,7 +26,7 @@
 
 static void nes_mapper_init(nes_t* nes) {
     nes_load_prgrom_16k(nes, 0, 0);
-    nes_load_prgrom_16k(nes, 2, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
+    nes_load_prgrom_16k(nes, 1, (uint16_t)(nes->nes_rom.prg_rom_size - 1));
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, 0);
     }
@@ -37,7 +37,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     uint16_t prg_bank = (uint16_t)(((address >> 8) & 0x03u) * 8u + ((address >> 3) & 0x07u));
     /* 16KB mirrored mode: both halves same bank */
     nes_load_prgrom_16k(nes, 0, prg_bank);
-    nes_load_prgrom_16k(nes, 2, prg_bank);
+    nes_load_prgrom_16k(nes, 1, prg_bank);
     /* CHR: address[13:11] high bits, data[3] low bit */
     uint8_t chr = (uint8_t)(((address >> 11) & 0x07u) << 1u | ((data >> 3) & 0x01u));
     if (nes->nes_rom.chr_rom_size > 0) {
