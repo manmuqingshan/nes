@@ -53,6 +53,7 @@ dkms.conf
 .vscode
 .xmake
 
+/rom
 *.nes
 *.NES
 **/build

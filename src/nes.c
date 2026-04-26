@@ -86,6 +86,10 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     const uint8_t* name_table = nes->nes_ppu.name_table[nametable_id];
     for (uint8_t tile_x = dx; tile_x < 32; tile_x++){
         const uint8_t pattern_id = name_table[tile_x + tile_y_offset];
+        if (nes->nes_mapper.mapper_ppu && (pattern_id == 0xFD || pattern_id == 0xFE)) {
+            nes->nes_mapper.mapper_ppu(nes, (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u));
+            pattern_table = nes->nes_ppu.pattern_table;
+        }
         const uint8_t* bit0_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit0_p[dy + 8];
@@ -101,6 +105,10 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     name_table = nes->nes_ppu.name_table[nametable_id];
     for (uint8_t tile_x = 0; tile_x <= dx; tile_x++){
         const uint8_t pattern_id = name_table[tile_x + tile_y_offset];
+        if (nes->nes_mapper.mapper_ppu && (pattern_id == 0xFD || pattern_id == 0xFE)) {
+            nes->nes_mapper.mapper_ppu(nes, (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u));
+            pattern_table = nes->nes_ppu.pattern_table;
+        }
         const uint8_t* bit0_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit0_p[dy + 8];
@@ -152,6 +160,10 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
         const uint8_t sprite_y = (uint8_t)(sprite_info.y + 1);
         const uint8_t spr_base = nes->nes_ppu.CTRL_H ? ((sprite_info.pattern_8x16) ? 4 : 0) : (nes->nes_ppu.CTRL_S ? 4 : 0);
         const uint8_t spr_tile = nes->nes_ppu.CTRL_H ? (uint8_t)(sprite_info.tile_index_8x16 << 1) : sprite_info.tile_index_number;
+        if (nes->nes_mapper.mapper_ppu && (spr_tile == 0xFD || spr_tile == 0xFE)) {
+            nes->nes_mapper.mapper_ppu(nes, (uint16_t)((uint16_t)spr_base * 0x400u + (uint16_t)spr_tile * 16u));
+            pattern_table = nes->nes_ppu.pattern_table;
+        }
         const uint8_t* sprite_bit0_p = pattern_table[spr_base + (spr_tile >> 6)] + ((spr_tile & 0x3F) << 4);
 
         uint8_t dy = (uint8_t)(scanline - sprite_y);

@@ -66,22 +66,72 @@ typedef struct nes{
     nes_color_t nes_draw_data[NES_DRAW_SIZE];
 } nes_t;
 
-
+/*
+ * Allocate and initialize a new NES instance.
+ *
+ * Returns a pointer to the initialized instance, or NULL on failure.
+ */
 nes_t* nes_init(void);
+
+/*
+ * Deinitialize a NES instance created by nes_init and free its memory.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_deinit(nes_t *nes);
 
+/*
+ * Run the main emulation loop until nes_quit is set.
+ */
 void nes_run(nes_t* nes);
 
 #if (NES_USE_FS == 1)
+/*
+ * Load a ROM image from a file.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_load_file(nes_t* nes, const char* file_path);
+
+/*
+ * Unload the ROM loaded from a file and release related resources.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_unload_file(nes_t* nes);
 #endif
 
+/*
+ * Load a ROM image from a memory buffer.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_load_rom(nes_t* nes, const uint8_t* nes_rom);
+
+/*
+ * Unload the currently loaded ROM and release related resources.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_unload_rom(nes_t* nes);
 
+/*
+ * Initialize platform-specific resources for an already allocated instance.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_initex(nes_t* nes);
+
+/*
+ * Release platform-specific resources without freeing the nes_t instance itself.
+ *
+ * Returns NES_OK on success or NES_ERROR on failure.
+ */
 int nes_deinitex(nes_t* nes);
+
+/*
+ * Platform hook called after each emulated frame.
+ */
 void nes_frame(nes_t* nes);
 
 #ifdef __cplusplus          
