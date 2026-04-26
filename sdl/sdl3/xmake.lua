@@ -13,6 +13,7 @@ end
 
 set_warnings("allextra")
 set_languages("c11")
+add_cflags("/utf-8", {tools = "cl"})
 
 if is_plat("wasm") then
     add_requires("emscripten")
