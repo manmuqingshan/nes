@@ -22,6 +22,12 @@
 
 #include <SDL3/SDL.h>
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <wchar.h>
+#endif
+
 /* memory */
 void *nes_malloc(int num){
     return SDL_malloc(num);
@@ -45,7 +51,45 @@ int nes_memcmp(const void *str1, const void *str2, size_t n){
 
 #if (NES_USE_FS == 1)
 /* io */
+#if defined(_WIN32)
+static wchar_t *utf8_to_wide(const char *text){
+    if (!text){
+        return NULL;
+    }
+
+    int wide_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, NULL, 0);
+    if (wide_len <= 0){
+        return NULL;
+    }
+
+    wchar_t *wide_text = (wchar_t *)SDL_malloc((size_t)wide_len * sizeof(wchar_t));
+    if (!wide_text){
+        return NULL;
+    }
+
+    if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, wide_text, wide_len) <= 0){
+        SDL_free(wide_text);
+        return NULL;
+    }
+
+    return wide_text;
+}
+#endif
+
 FILE *nes_fopen(const char * filename, const char * mode ){
+#if defined(_WIN32)
+    wchar_t *wide_filename = utf8_to_wide(filename);
+    wchar_t *wide_mode = utf8_to_wide(mode);
+    if (wide_filename && wide_mode){
+        FILE *file = _wfopen(wide_filename, wide_mode);
+        SDL_free(wide_filename);
+        SDL_free(wide_mode);
+        return file;
+    }
+
+    SDL_free(wide_filename);
+    SDL_free(wide_mode);
+#endif
     return fopen(filename,mode);
 }
 
