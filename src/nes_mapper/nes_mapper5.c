@@ -39,6 +39,7 @@ typedef struct {
     uint8_t mul_a;             /* $5205: Multiplier operand A */
     uint8_t mul_b;             /* $5206: Multiplier operand B */
     uint8_t last_chr_write;    /* 0=sprite ($5120-$5127), 1=bg ($5128-$512B) */
+    uint8_t last_chr_render;   /* 0=sprite, 1=bg, 0xFF=unknown */
     uint8_t prg_bank_count;    /* Number of 8KB PRG ROM banks */
     uint8_t chr_bank_count;    /* Number of 1KB CHR ROM banks (capped at 255) */
     uint8_t exram[1024];       /* 1KB ExRAM ($5C00-$5FFF) */
@@ -234,6 +235,7 @@ static void nes_mapper_init(nes_t* nes) {
 
     /* Default CHR mode 0 */
     mapper_reg->chr_mode = 0;
+    mapper_reg->last_chr_render = 0xFF;
 
     /* Default nametable mapping based on ROM header mirroring type */
     if (nes->nes_rom.mirroring_type) {
@@ -281,6 +283,7 @@ static void nes_mapper_apu(nes_t* nes, uint16_t address, uint8_t data) {
             break;
         case 0x5101: /* CHR mode */
             mapper_reg->chr_mode = data & 3;
+            mapper_reg->last_chr_render = 0xFF;
             if (mapper_reg->last_chr_write == 0)
                 mapper5_apply_chr_sprite(nes);
             else
@@ -320,11 +323,13 @@ static void nes_mapper_apu(nes_t* nes, uint16_t address, uint8_t data) {
         case 0x5124: case 0x5125: case 0x5126: case 0x5127:
             mapper_reg->chr_bank_spr[address - 0x5120] = data;
             mapper_reg->last_chr_write = 0;
+            mapper_reg->last_chr_render = 0xFF;
             mapper5_apply_chr_sprite(nes);
             break;
         case 0x5128: case 0x5129: case 0x512A: case 0x512B:
             mapper_reg->chr_bank_bg[address - 0x5128] = data;
             mapper_reg->last_chr_write = 1;
+            mapper_reg->last_chr_render = 0xFF;
             mapper5_apply_chr_bg(nes);
             break;
 
@@ -424,6 +429,8 @@ static void nes_mapper_vsync(nes_t* nes) {
 static void nes_mapper_render_screen(nes_t* nes, uint8_t mode) {
     mapper5_register_t* mapper_reg = (mapper5_register_t*)nes->nes_mapper.mapper_register;
     if (mapper_reg->chr_bank_count == 0) return; /* CHR-RAM */
+    if (mapper_reg->last_chr_render == mode) return;
+    mapper_reg->last_chr_render = mode;
     if (mode) {
         /* BG rendering */
         mapper5_apply_chr_bg(nes);

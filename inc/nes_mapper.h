@@ -38,8 +38,10 @@ typedef struct {
     void (*mapper_vsync)(nes_t* nes);
     /* Callback at HSync */
     void (*mapper_hsync)(nes_t* nes);
-    /* Callback at PPU read/write */
+    /* Callback at selected PPU pattern fetches */
     void (*mapper_ppu)(nes_t* nes, uint16_t write_addr);
+    uint8_t mapper_ppu_tile_min;
+    uint8_t mapper_ppu_tile_max;
     /* Callback at Rendering Screen 1:BG, 0:Sprite */
     void (*mapper_render_screen)(nes_t* nes, uint8_t mode);
     void* mapper_register;

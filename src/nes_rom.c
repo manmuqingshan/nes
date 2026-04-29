@@ -152,12 +152,15 @@ int nes_unload_file(nes_t* nes){
 #endif
     if (nes->nes_rom.prg_rom){
         nes_free(nes->nes_rom.prg_rom);
+        nes->nes_rom.prg_rom = NULL;
     }
     if (nes->nes_rom.chr_rom){
         nes_free(nes->nes_rom.chr_rom);
+        nes->nes_rom.chr_rom = NULL;
     }
     if (nes->nes_rom.sram){
         nes_free(nes->nes_rom.sram);
+        nes->nes_rom.sram = NULL;
     }
     return NES_OK;
 }
@@ -168,6 +171,10 @@ int nes_load_rom(nes_t* nes, const uint8_t* nes_rom){
     nes_header_ines_t* nes_header_info = (nes_header_ines_t*)nes_rom;
 #if (NES_USE_SRAM == 1)
     nes->nes_rom.sram = (uint8_t*)nes_malloc(SRAM_SIZE);
+    if (nes->nes_rom.sram == NULL) {
+        goto error;
+    }
+    nes_memset(nes->nes_rom.sram, 0x00, SRAM_SIZE);
 #endif
     if ( nes_memcmp( nes_header_info->identification, "NES\x1a", 4 )){
         goto error;
@@ -228,6 +235,10 @@ error:
 int nes_unload_rom(nes_t* nes){
     if (nes->nes_mapper.mapper_deinit) {
         nes->nes_mapper.mapper_deinit(nes);
+    }
+    if (nes->nes_rom.sram) {
+        nes_free(nes->nes_rom.sram);
+        nes->nes_rom.sram = NULL;
     }
     return NES_OK;
 }

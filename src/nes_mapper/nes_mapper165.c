@@ -88,5 +88,7 @@ int nes_mapper165_init(nes_t* nes) {
     nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write  = nes_mapper_write;
     nes->nes_mapper.mapper_ppu    = nes_mapper_ppu;
+    nes->nes_mapper.mapper_ppu_tile_min = 0xFD;
+    nes->nes_mapper.mapper_ppu_tile_max = 0xFE;
     return NES_OK;
 }

@@ -68,6 +68,15 @@ static inline void nes_palette_generate(nes_t* nes){
     }
 }
 
+static inline void nes_mapper_ppu_tile_fetch(nes_t* nes, uint8_t tile, uint16_t address, uint8_t*** pattern_table){
+    if (nes->nes_mapper.mapper_ppu &&
+        tile >= nes->nes_mapper.mapper_ppu_tile_min &&
+        tile <= nes->nes_mapper.mapper_ppu_tile_max) {
+        nes->nes_mapper.mapper_ppu(nes, address);
+        *pattern_table = nes->nes_ppu.pattern_table;
+    }
+}
+
 static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t* draw_data){
     (void)scanline;
     uint8_t p = 0;
@@ -86,10 +95,7 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     const uint8_t* name_table = nes->nes_ppu.name_table[nametable_id];
     for (uint8_t tile_x = dx; tile_x < 32; tile_x++){
         const uint8_t pattern_id = name_table[tile_x + tile_y_offset];
-        if (nes->nes_mapper.mapper_ppu && (pattern_id == 0xFD || pattern_id == 0xFE)) {
-            nes->nes_mapper.mapper_ppu(nes, (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u));
-            pattern_table = nes->nes_ppu.pattern_table;
-        }
+        nes_mapper_ppu_tile_fetch(nes, pattern_id, (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u + dy), &pattern_table);
         const uint8_t* bit0_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit0_p[dy + 8];
@@ -106,10 +112,7 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     name_table = nes->nes_ppu.name_table[nametable_id];
     for (uint8_t tile_x = 0; tile_x <= dx; tile_x++){
         const uint8_t pattern_id = name_table[tile_x + tile_y_offset];
-        if (nes->nes_mapper.mapper_ppu && (pattern_id == 0xFD || pattern_id == 0xFE)) {
-            nes->nes_mapper.mapper_ppu(nes, (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u));
-            pattern_table = nes->nes_ppu.pattern_table;
-        }
+        nes_mapper_ppu_tile_fetch(nes, pattern_id, (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u + dy), &pattern_table);
         const uint8_t* bit0_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit0_p[dy + 8];
@@ -162,25 +165,20 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
         const uint8_t sprite_y = (uint8_t)(sprite_info.y + 1);
         const uint8_t spr_base = nes->nes_ppu.CTRL_H ? ((sprite_info.pattern_8x16) ? 4 : 0) : (nes->nes_ppu.CTRL_S ? 4 : 0);
         const uint8_t spr_tile = nes->nes_ppu.CTRL_H ? (uint8_t)(sprite_info.tile_index_8x16 << 1) : sprite_info.tile_index_number;
-        if (nes->nes_mapper.mapper_ppu && (spr_tile == 0xFD || spr_tile == 0xFE)) {
-            nes->nes_mapper.mapper_ppu(nes, (uint16_t)((uint16_t)spr_base * 0x400u + (uint16_t)spr_tile * 16u));
-            pattern_table = nes->nes_ppu.pattern_table;
-        }
-        const uint8_t* sprite_bit0_p = pattern_table[spr_base + (spr_tile >> 6)] + ((spr_tile & 0x3F) << 4);
-
+        uint8_t spr_pattern = spr_tile;
         uint8_t dy = (uint8_t)(scanline - sprite_y);
 
         if (nes->nes_ppu.CTRL_H){
             if (sprite_info.flip_v){
                 if (dy < 8){
-                    sprite_bit0_p +=16;
+                    spr_pattern++;
                     dy = sprite_size - dy - 1 -8;
                 }else{
                     dy = sprite_size - dy - 1;
                 }
             }else{
                 if (dy > 7){
-                    sprite_bit0_p +=16;
+                    spr_pattern++;
                     dy-=8;
                 }
             }
@@ -189,6 +187,9 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                 dy = sprite_size - dy - 1;
             }
         }
+
+        nes_mapper_ppu_tile_fetch(nes, spr_pattern, (uint16_t)((uint16_t)spr_base * 0x400u + (uint16_t)spr_pattern * 16u + dy), &pattern_table);
+        const uint8_t* sprite_bit0_p = pattern_table[spr_base + (spr_pattern >> 6)] + ((spr_pattern & 0x3F) << 4);
 
         const uint8_t sprite_bit0 = sprite_bit0_p[dy];
         const uint8_t sprite_bit1 = sprite_bit0_p[dy + 8];

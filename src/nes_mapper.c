@@ -536,6 +536,12 @@ int nes_mapper511_init(nes_t* nes);
 
 #if (NES_ROM_STREAM == 1)
 
+static inline uint16_t nes_prgrom_8k_wrap(nes_t* nes, uint16_t src) {
+    const uint16_t total_8k = (uint16_t)(nes->nes_rom.prg_rom_size * 2u);
+    if (total_8k == 0u) return 0u;
+    return (src < total_8k) ? src : (uint16_t)(src % total_8k);
+}
+
 static inline uint16_t nes_cache_tick(nes_rom_info_t* rom) {
     rom->cache_tick++;
     if (rom->cache_tick == 0) {
@@ -617,20 +623,21 @@ static inline uint8_t* nes_chr_cache_get(nes_t* nes, uint16_t src) {
 
 /* load 8k PRG-ROM from file with LRU cache */
 void nes_load_prgrom_8k(nes_t* nes,uint8_t des, uint16_t src) {
+    src = nes_prgrom_8k_wrap(nes, src);
     nes->nes_cpu.prg_banks[des] = nes_prg_cache_get(nes, src);
 }
 
 /* load 16k PRG-ROM from file with LRU cache */
 void nes_load_prgrom_16k(nes_t* nes,uint8_t des, uint16_t src) {
-    nes->nes_cpu.prg_banks[des * 2]     = nes_prg_cache_get(nes, src * 2);
-    nes->nes_cpu.prg_banks[des * 2 + 1] = nes_prg_cache_get(nes, src * 2 + 1);
+    nes_load_prgrom_8k(nes, (uint8_t)(des * 2),     (uint16_t)(src * 2u));
+    nes_load_prgrom_8k(nes, (uint8_t)(des * 2 + 1), (uint16_t)(src * 2u + 1u));
 }
 
 /* load 32k PRG-ROM from file with LRU cache */
 void nes_load_prgrom_32k(nes_t* nes,uint8_t des, uint16_t src) {
     (void)des;
     for (int i = 0; i < 4; i++) {
-        nes->nes_cpu.prg_banks[i] = nes_prg_cache_get(nes, (uint16_t)(src * 4 + i));
+        nes_load_prgrom_8k(nes, (uint8_t)i, (uint16_t)(src * 4u + (uint16_t)i));
     }
 }
 
@@ -675,23 +682,29 @@ void nes_load_chrrom_8k(nes_t* nes,uint8_t des, uint8_t src) {
 }
 
 #else
+static inline uint16_t nes_prgrom_8k_wrap(nes_t* nes, uint16_t src) {
+    const uint16_t total_8k = (uint16_t)(nes->nes_rom.prg_rom_size * 2u);
+    if (total_8k == 0u) return 0u;
+    return (src < total_8k) ? src : (uint16_t)(src % total_8k);
+}
+
 void nes_load_prgrom_8k(nes_t* nes,uint8_t des, uint16_t src) {
+    src = nes_prgrom_8k_wrap(nes, src);
     nes->nes_cpu.prg_banks[des] = nes->nes_rom.prg_rom + 8 * 1024 * src;
 }
 
 /* load 16k PRG-ROM */
 void nes_load_prgrom_16k(nes_t* nes,uint8_t des, uint16_t src) {
-    nes->nes_cpu.prg_banks[des * 2] = nes->nes_rom.prg_rom + 8 * 1024 * src * 2;
-    nes->nes_cpu.prg_banks[des * 2 + 1] = nes->nes_rom.prg_rom + 8 * 1024 * (src * 2 + 1);
+    nes_load_prgrom_8k(nes, (uint8_t)(des * 2),     (uint16_t)(src * 2u));
+    nes_load_prgrom_8k(nes, (uint8_t)(des * 2 + 1), (uint16_t)(src * 2u + 1u));
 }
 
 /* load 32k PRG-ROM */
 void nes_load_prgrom_32k(nes_t* nes,uint8_t des, uint16_t src) {
     (void)des;
-    nes->nes_cpu.prg_banks[0] = nes->nes_rom.prg_rom + 8 * 1024 * src * 4;
-    nes->nes_cpu.prg_banks[1] = nes->nes_rom.prg_rom + 8 * 1024 * (src * 4 + 1);
-    nes->nes_cpu.prg_banks[2] = nes->nes_rom.prg_rom + 8 * 1024 * (src * 4 + 2);
-    nes->nes_cpu.prg_banks[3] = nes->nes_rom.prg_rom + 8 * 1024 * (src * 4 + 3);
+    for (uint8_t i = 0; i < 4; i++) {
+        nes_load_prgrom_8k(nes, i, (uint16_t)(src * 4u + i));
+    }
 }
 
 /* load 1k CHR-ROM */
@@ -699,6 +712,8 @@ void nes_load_chrrom_1k(nes_t* nes,uint8_t des, uint8_t src) {
     if (nes->nes_rom.chr_rom_size > 0) {
         uint16_t total_1k = (uint16_t)(nes->nes_rom.chr_rom_size * 8);
         src = (uint8_t)(src % total_1k);
+    } else {
+        src = des;
     }
     nes->nes_ppu.pattern_table[des] = nes->nes_rom.chr_rom + 1024 * src;
 }
@@ -708,6 +723,8 @@ void nes_load_chrrom_4k(nes_t* nes,uint8_t des, uint8_t src) {
     if (nes->nes_rom.chr_rom_size > 0) {
         uint16_t total_4k = (uint16_t)(nes->nes_rom.chr_rom_size * 2);
         src = (uint8_t)(src % total_4k);
+    } else {
+        src = des;
     }
     for (size_t i = 0; i < 4; i++){
         nes->nes_ppu.pattern_table[des * 4 + i] = nes->nes_rom.chr_rom + 1024 * (src * 4 + i);
@@ -718,6 +735,8 @@ void nes_load_chrrom_4k(nes_t* nes,uint8_t des, uint8_t src) {
 void nes_load_chrrom_8k(nes_t* nes,uint8_t des, uint8_t src) {
     if (nes->nes_rom.chr_rom_size > 0) {
         src = (uint8_t)(src % nes->nes_rom.chr_rom_size);
+    } else {
+        src = des;
     }
     for (size_t i = 0; i < 8; i++){
         nes->nes_ppu.pattern_table[des + i] = nes->nes_rom.chr_rom + 1024 * (src * 8 + i);
@@ -729,6 +748,7 @@ void nes_load_chrrom_8k(nes_t* nes,uint8_t des, uint8_t src) {
 #define NES_CASE_LOAD_MAPPER(mapper_id) case mapper_id: return nes_mapper##mapper_id##_init(nes)
 
 int nes_load_mapper(nes_t* nes){
+    nes_memset(&nes->nes_mapper, 0, sizeof(nes->nes_mapper));
     switch (nes->nes_rom.mapper_number){
         NES_CASE_LOAD_MAPPER(0);
         NES_CASE_LOAD_MAPPER(1);
