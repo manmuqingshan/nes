@@ -144,6 +144,7 @@ typedef struct nes_ppu{
     };
     
     uint8_t palette_indexes[0x20];          /*  $3F00-$3F1F Palette RAM indexes */
+    uint8_t bg_opaque[256];                 /*  Per-scanline background opacity: 1=opaque (palette index != 0), 0=transparent */
     union {
         struct {
             nes_color_t background_palette[0x10];

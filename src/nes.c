@@ -97,6 +97,7 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
         const uint8_t high_bit = ((attribute >> (attr_y_shift | (tile_x & 2))) & 3) << 2;
         for (; m >= 0; m--){
             uint8_t low_bit = ((bit0 >> m) & 0x01) | ((bit1 >> m)<<1 & 0x02);
+            nes->nes_ppu.bg_opaque[p] = (low_bit != 0);
             draw_data[p++] = bg_pal[high_bit | low_bit];
         }
         m = 7;
@@ -123,6 +124,7 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
         }
         for (; m >= skew; m--){
             const uint8_t low_bit = ((bit0 >> m) & 0x01) | ((bit1 >> m)<<1 & 0x02);
+            nes->nes_ppu.bg_opaque[p] = (low_bit != 0);
             draw_data[p++] = bg_pal[high_bit | low_bit];
         }
         m = 7;
@@ -246,7 +248,7 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                     for (int8_t m = 0; m <= 7; m++){
                         if (px == 255) break;
                         if ((sprite_date >> m) & 1){
-                            if (draw_data[px] != background_color){
+                            if (nes->nes_ppu.bg_opaque[px]){
                                 nes->nes_ppu.STATUS_S = 1;
                                 break;
                             }
@@ -257,7 +259,7 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                     for (int8_t m = 7; m >= 0; m--){
                         if (px == 255) break;
                         if ((sprite_date >> m) & 1){
-                            if (draw_data[px] != background_color){
+                            if (nes->nes_ppu.bg_opaque[px]){
                                 nes->nes_ppu.STATUS_S = 1;
                                 break;
                             }
@@ -318,7 +320,7 @@ void nes_run(nes_t* nes){
     // Accumulate fractional cycles: add 2 per scanline, emit +1 CPU cycle when >= 3.
     uint8_t dot_remainder = 0;
 
-    while (!nes->nes_quit){
+    while(!nes->nes_quit){
 #if (NES_FRAME_SKIP != 0)
         if(nes->nes_frame_skip_count == 0)
 #endif
