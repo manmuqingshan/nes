@@ -63,6 +63,8 @@ static inline uint8_t nes_read_cpu(nes_t* nes,uint16_t address){
             }
             return 0;
         case 0x6000://$6000-$7FFF SRAM
+            if (nes->nes_mapper.mapper_read_sram)
+                return nes->nes_mapper.mapper_read_sram(nes, address);
             if (nes->nes_rom.sram)
                 return nes->nes_rom.sram[address & (uint16_t)0x1fff];
             return 0;
@@ -128,6 +130,8 @@ static inline void nes_write_cpu(nes_t* nes,uint16_t address, uint8_t data){
             }
             return;
         case 0x6000://$6000-$7FFF SRAM
+            if (nes->nes_mapper.mapper_sram)
+                nes->nes_mapper.mapper_sram(nes, address, data);
             if (nes->nes_rom.sram)
                 nes->nes_rom.sram[address & (uint16_t)0x1fff] = data;
             return;
