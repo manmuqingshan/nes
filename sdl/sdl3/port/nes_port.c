@@ -69,10 +69,11 @@ int nes_fclose(FILE *stream ){
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 static SDL_Texture *framebuffer = NULL;
+static uint64_t nes_next_frame_tick = 0;
 
 static void sdl_event(nes_t *nes) {
     SDL_Event event;
-    if (SDL_PollEvent(&event)){
+    while (SDL_PollEvent(&event)){
         switch (event.type) {
             case SDL_EVENT_KEY_DOWN:
                 switch (event.key.scancode){
@@ -194,45 +195,40 @@ static void sdl_event(nes_t *nes) {
 #define SDL_AUDIO_NUM_CHANNELS          (1)
 static SDL_AudioStream* nes_audio_stream = NULL;
 
-static uint8_t apu_output = 0;
-static void AudioCallback(void* userdata, SDL_AudioStream* astream, int additional_amount, int total_amount) {
-    (void)total_amount;
-    nes_t *nes = (nes_t*)userdata;
-    static int total = NES_APU_SAMPLE_PER_SYNC;
-    if (apu_output){
-        uint8_t samples[441] = {0};
-        uint8_t* nes_sample_buffer = &nes->nes_apu.sample_buffer;
-        int StreamSend = SDL_min(additional_amount, total);
+int nes_sound_output(uint8_t *buffer, size_t len){
+    if (!nes_audio_stream){
+        return -1;
+    }
 
-        nes_memcpy(samples, (StreamSend == additional_amount)? nes_sample_buffer : (nes_sample_buffer)+additional_amount, StreamSend);
-        SDL_PutAudioStreamData(astream, samples, StreamSend);
-
-        total -= StreamSend;
-        if (total == 0){
-            total = NES_APU_SAMPLE_PER_SYNC;
-            apu_output = 0;
+    const int max_queue_bytes = NES_APU_SAMPLE_PER_SYNC * 4;
+    if (SDL_GetAudioStreamQueued(nes_audio_stream) > max_queue_bytes){
+        if (!SDL_ClearAudioStream(nes_audio_stream)){
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't clear audio stream: %s\n", SDL_GetError());
+            return -1;
         }
     }
-}
-
-int nes_sound_output(uint8_t *buffer, size_t len){
-    (void)buffer;
-    (void)len;
-    apu_output = 1;
+    if (!SDL_PutAudioStreamData(nes_audio_stream, buffer, (int)len)){
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't queue audio: %s\n", SDL_GetError());
+        return -1;
+    }
     return 0;
 }
 #endif
 
 int nes_initex(nes_t *nes){
     SDL_SetAppMetadata(NES_NAME, NES_VERSION_STRING, NES_URL);
-    if (!SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_JOYSTICK| SDL_INIT_EVENTS)) {
+    if (!SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_JOYSTICK|SDL_INIT_EVENTS)) {
         SDL_Log("Can not init video, %s", SDL_GetError());
         return -1;
     }
     if (!SDL_CreateWindowAndRenderer(NES_NAME,NES_WIDTH * 2, NES_HEIGHT * 2,      // 二倍分辨率
-                                    SDL_WINDOW_OCCLUDED|SDL_WINDOW_HIGH_PIXEL_DENSITY,
+                                    SDL_WINDOW_HIGH_PIXEL_DENSITY,
                                     &window,&renderer)) {
         SDL_Log("Can not create window, %s", SDL_GetError());
+        return -1;
+    }
+    if (!SDL_SetRenderLogicalPresentation(renderer, NES_WIDTH, NES_HEIGHT, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE)) {
+        SDL_Log("Can not set logical presentation, %s", SDL_GetError());
         return -1;
     }
     framebuffer = SDL_CreateTexture(renderer,
@@ -240,23 +236,39 @@ int nes_initex(nes_t *nes){
                                     SDL_TEXTUREACCESS_STREAMING,
                                     NES_WIDTH,
                                     NES_HEIGHT);
+    if (framebuffer == NULL) {
+        SDL_Log("Can not create texture, %s", SDL_GetError());
+        return -1;
+    }
+    if (!SDL_SetTextureScaleMode(framebuffer, SDL_SCALEMODE_NEAREST)) {
+        SDL_Log("Can not set texture scale mode, %s", SDL_GetError());
+        return -1;
+    }
 #if (NES_ENABLE_SOUND == 1)
     SDL_AudioSpec spec = {
         .freq = NES_APU_SAMPLE_RATE,
-        .format = SDL_AUDIO_S8,
+        .format = SDL_AUDIO_U8,
         .channels = SDL_AUDIO_NUM_CHANNELS,
     };
-    nes_audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, AudioCallback, nes);
+    nes_audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, nes);
     if (!nes_audio_stream) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't open audio: %s\n", SDL_GetError());
     }
-    SDL_ResumeAudioStreamDevice(nes_audio_stream);
+    if (nes_audio_stream && !SDL_ResumeAudioStreamDevice(nes_audio_stream)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't resume audio: %s\n", SDL_GetError());
+    }
 #endif
     return 0;
 }
 
 int nes_deinitex(nes_t *nes){
     (void)nes;
+#if (NES_ENABLE_SOUND == 1)
+    if (nes_audio_stream) {
+        SDL_DestroyAudioStream(nes_audio_stream);
+        nes_audio_stream = NULL;
+    }
+#endif
     SDL_DestroyTexture(framebuffer);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
@@ -277,13 +289,29 @@ int nes_draw(int x1, int y1, int x2, int y2, nes_color_t* color_data){
     return 0;
 }
 
-#define FRAMES_PER_SECOND   1000/60
-
 void nes_frame(nes_t* nes){
+    const uint64_t freq = SDL_GetPerformanceFrequency();
+    const uint64_t frame_ticks = freq / 60;
+
+    if (nes_next_frame_tick == 0){
+        nes_next_frame_tick = SDL_GetPerformanceCounter();
+    }
+
     SDL_RenderTexture(renderer, framebuffer, NULL, NULL);
     SDL_RenderPresent(renderer);
     sdl_event(nes);
-    SDL_Delay(FRAMES_PER_SECOND);
+
+    nes_next_frame_tick += frame_ticks;
+    uint64_t now = SDL_GetPerformanceCounter();
+    if (now < nes_next_frame_tick){
+        uint32_t delay_ms = (uint32_t)((nes_next_frame_tick - now) * 1000 / freq);
+        if (delay_ms > 0){
+            SDL_Delay(delay_ms);
+        }
+    }else if ((now - nes_next_frame_tick) > (frame_ticks * 2)){
+        // If we are far behind, resync to avoid long-term drift.
+        nes_next_frame_tick = now;
+    }
 }
 
 
