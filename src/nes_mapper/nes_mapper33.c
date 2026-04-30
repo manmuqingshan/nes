@@ -21,6 +21,8 @@
  * No IRQ, no SRAM. All state is applied immediately on write; no register struct needed.
  * PRG: two 8KB switchable banks at $8000/$A000; last two 8KB banks fixed.
  * CHR: two 2KB banks at $0000/$0800, four 1KB banks at $1000-$1C00.
+ * Address decode uses CPU A15/A13/A1/A0; A12 is not decoded, so $9000 mirrors
+ * $8000 and $B000 mirrors $A000.
  */
 
 static void nes_mapper_init(nes_t* nes) {
@@ -33,8 +35,8 @@ static void nes_mapper_init(nes_t* nes) {
 }
 
 /*
- * Address decode: use bits[15:12] for block and bits[1:0] for sub-register,
- * masking with (address & 0xF000) | (address & 0x0003).
+ * Address decode: use bits[15,13] for block and bits[1:0] for sub-register,
+ * masking with (address & 0xA000) | (address & 0x0003).
  *
  * $8000: bits[5:0]=8KB PRG bank for $8000-$9FFF; bit[6]=mirror (0=V,1=H)
  * $8001: bits[5:0]=8KB PRG bank for $A000-$BFFF
@@ -46,7 +48,7 @@ static void nes_mapper_init(nes_t* nes) {
  * $A003: 1KB CHR bank (PPU $1C00-$1FFF)  — slot 7
  */
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
-    switch ((address & 0xF000u) | (address & 0x0003u)) {
+    switch ((address & 0xA000u) | (address & 0x0003u)) {
     case 0x8000u:
         nes_load_prgrom_8k(nes, 0, data & 0x3Fu);
         if (nes->nes_rom.four_screen == 0) {

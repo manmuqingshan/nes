@@ -384,6 +384,9 @@ void nes_run(nes_t* nes){
             nes_opcode(nes,85); // ppu cycles: 85*3=255
             // https://www.nesdev.org/wiki/PPU_scrolling#Wrapping_around
             if (nes->nes_ppu.MASK_b || nes->nes_ppu.MASK_s){
+                // Rendering resets OAMADDR during sprite evaluation; at line granularity,
+                // keep it with the existing dot-256/257 scroll update.
+                nes->nes_ppu.oam_addr = 0;
                 // https://www.nesdev.org/wiki/PPU_scrolling#At_dot_256_of_each_scanline
                 if ((nes->nes_ppu.v.fine_y) < 7) {
                     nes->nes_ppu.v.fine_y++;
