@@ -22,7 +22,7 @@ typedef struct {
     uint8_t  prg[3];        /* 8KB PRG bank indices at $8000/$A000/$C000 */
     uint8_t  chr[8];        /* 1KB CHR bank indices [0-7] */
     uint8_t  irq_enable;    /* IRQ enabled flag */
-    uint16_t irq_counter;   /* IRQ countdown counter */
+    int32_t  irq_counter;   /* IRQ countdown counter */
     uint16_t irq_reload;    /* IRQ reload value (big-endian: $9005=high, $9006=low) */
 } nes_mapper65_t;
 
@@ -41,21 +41,24 @@ static void nes_mapper_init(nes_t* nes) {
     nes_memset(r, 0, sizeof(*r));
 
     uint16_t num_8k = (uint16_t)(nes->nes_rom.prg_rom_size * 2);
-    nes_load_prgrom_8k(nes, 0, 0);
-    nes_load_prgrom_8k(nes, 1, 1 % num_8k);
-    nes_load_prgrom_8k(nes, 2, 2 % num_8k);
+    r->prg[0] = 0;
+    r->prg[1] = 0;
+    r->prg[2] = (uint8_t)(num_8k - 2u);
+    nes_load_prgrom_8k(nes, 0, r->prg[0]);
+    nes_load_prgrom_8k(nes, 1, r->prg[1]);
+    nes_load_prgrom_8k(nes, 2, r->prg[2]);
     nes_load_prgrom_8k(nes, 3, num_8k - 1);
 
     for (uint8_t i = 0; i < 8; i++) {
-        r->chr[i] = i;
-        nes_load_chrrom_1k(nes, i, i);
+        r->chr[i] = 0;
+        nes_load_chrrom_1k(nes, i, r->chr[i]);
     }
     nes_ppu_screen_mirrors(nes, nes->nes_rom.mirroring_type ? NES_MIRROR_VERTICAL : NES_MIRROR_HORIZONTAL);
 }
 
 /*
  * $8000: 8KB PRG bank at $8000
- * $9000: Mirroring — bit[0]: 0=vertical, 1=horizontal
+ * $9001: Mirroring — bit[7]: 0=vertical, 1=horizontal
  * $9003: IRQ enable — bit[7]: 1=enable, 0=disable+acknowledge
  * $9004: IRQ reload — load counter from irq_reload
  * $9005: IRQ reload value high byte
@@ -71,7 +74,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     if ((address & 0xFFF8) == 0xB000) {
         uint8_t slot = (uint8_t)(address & 7);
         r->chr[slot] = data;
-        nes_load_chrrom_1k(nes, slot, data % (uint8_t)(nes->nes_rom.chr_rom_size * 8));
+        nes_load_chrrom_1k(nes, slot, data);
         return;
     }
 
@@ -80,15 +83,15 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
             r->prg[0] = data;
             nes_load_prgrom_8k(nes, 0, data % num_8k);
             break;
-        case 0x9000:
-            nes_ppu_screen_mirrors(nes, (data & 1) ? NES_MIRROR_HORIZONTAL : NES_MIRROR_VERTICAL);
+        case 0x9001:
+            nes_ppu_screen_mirrors(nes, (data & 0x80u) ? NES_MIRROR_HORIZONTAL : NES_MIRROR_VERTICAL);
             break;
         case 0x9003:
-            r->irq_enable = (data >> 7) & 1;
-            if (!r->irq_enable) nes->nes_cpu.irq_pending = 0;
+            r->irq_enable = (data & 0x80u) ? 1u : 0u;
+            nes->nes_cpu.irq_pending = 0;
             break;
         case 0x9004:
-            r->irq_counter = r->irq_reload;
+            r->irq_counter = (int32_t)r->irq_reload;
             break;
         case 0x9005:
             r->irq_reload = (r->irq_reload & 0x00FF) | ((uint16_t)data << 8);
@@ -109,18 +112,14 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     }
 }
 
-/*
- * IRQ counter decrements each scanline when enabled.
- * Fires when counter reaches 0 and auto-clears enable.
- */
-static void nes_mapper_hsync(nes_t* nes) {
+static void nes_mapper_cpu_clock(nes_t* nes, uint16_t cycles) {
     nes_mapper65_t* r = (nes_mapper65_t*)nes->nes_mapper.mapper_register;
     if (!r->irq_enable) return;
-    if (r->irq_counter > 0) {
-        r->irq_counter--;
-    }
-    if (r->irq_counter == 0) {
+
+    r->irq_counter -= (int32_t)cycles;
+    if (r->irq_counter < -4) {
         r->irq_enable = 0;
+        r->irq_counter = -1;
         nes_cpu_irq(nes);
     }
 }
@@ -129,6 +128,6 @@ int nes_mapper65_init(nes_t* nes) {
     nes->nes_mapper.mapper_init   = nes_mapper_init;
     nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write  = nes_mapper_write;
-    nes->nes_mapper.mapper_hsync  = nes_mapper_hsync;
+    nes->nes_mapper.mapper_cpu_clock = nes_mapper_cpu_clock;
     return NES_OK;
 }
