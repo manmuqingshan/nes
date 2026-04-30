@@ -30,9 +30,11 @@ typedef struct {
     uint8_t irq_counter;
     uint8_t irq_reload;
     uint8_t irq_enabled;
-    uint8_t prg_bank_count;
-    uint8_t chr_bank_count;
+    uint16_t prg_bank_count;
+    uint16_t chr_bank_count;
     uint8_t outer;
+    uint8_t wram_enable;
+    uint8_t wram_write_protect;
 } mapper47_t;
 
 static void nes_mapper_deinit(nes_t* nes) {
@@ -44,47 +46,47 @@ static void mapper47_update_banks(nes_t* nes) {
     mapper47_t* m = (mapper47_t*)nes->nes_mapper.mapper_register;
     uint8_t prg_mode = (m->bank_select >> 6) & 1u;
     uint8_t chr_mode = (m->bank_select >> 7) & 1u;
-    uint8_t half_prg = (uint8_t)(m->prg_bank_count / 2u);
-    uint8_t half_chr = (uint8_t)(m->chr_bank_count / 2u);
+    uint16_t half_prg = m->prg_bank_count / 2u;
+    uint16_t half_chr = m->chr_bank_count / 2u;
     if (half_prg == 0u) half_prg = 1u;
     if (half_chr == 0u) half_chr = 1u;
-    uint8_t prg_off  = (uint8_t)((m->outer & 1u) * half_prg);
-    uint8_t chr_off  = (uint8_t)((m->outer & 1u) * half_chr);
-    uint8_t last  = (uint8_t)(prg_off + half_prg - 1u);
-    uint8_t slast = (uint8_t)(prg_off + half_prg - 2u);
+    uint16_t prg_off  = (uint16_t)((m->outer & 1u) * half_prg);
+    uint16_t chr_off  = (uint16_t)((m->outer & 1u) * half_chr);
+    uint16_t last  = prg_off + half_prg - 1u;
+    uint16_t slast = prg_off + half_prg - 2u;
 
     if (prg_mode == 0u) {
-        nes_load_prgrom_8k(nes, 0, (uint8_t)(prg_off + m->bank_values[6] % half_prg));
-        nes_load_prgrom_8k(nes, 1, (uint8_t)(prg_off + m->bank_values[7] % half_prg));
+        nes_load_prgrom_8k(nes, 0, prg_off + (m->bank_values[6] & 0x0Fu));
+        nes_load_prgrom_8k(nes, 1, prg_off + (m->bank_values[7] & 0x0Fu));
         nes_load_prgrom_8k(nes, 2, slast);
         nes_load_prgrom_8k(nes, 3, last);
     } else {
         nes_load_prgrom_8k(nes, 0, slast);
-        nes_load_prgrom_8k(nes, 1, (uint8_t)(prg_off + m->bank_values[7] % half_prg));
-        nes_load_prgrom_8k(nes, 2, (uint8_t)(prg_off + m->bank_values[6] % half_prg));
+        nes_load_prgrom_8k(nes, 1, prg_off + (m->bank_values[7] & 0x0Fu));
+        nes_load_prgrom_8k(nes, 2, prg_off + (m->bank_values[6] & 0x0Fu));
         nes_load_prgrom_8k(nes, 3, last);
     }
 
     if (m->chr_bank_count == 0u) return;
 
     if (chr_mode == 0u) {
-        nes_load_chrrom_1k(nes, 0, (uint8_t)(chr_off + (m->bank_values[0] & 0xFEu) % half_chr));
-        nes_load_chrrom_1k(nes, 1, (uint8_t)(chr_off + (m->bank_values[0] | 0x01u) % half_chr));
-        nes_load_chrrom_1k(nes, 2, (uint8_t)(chr_off + (m->bank_values[1] & 0xFEu) % half_chr));
-        nes_load_chrrom_1k(nes, 3, (uint8_t)(chr_off + (m->bank_values[1] | 0x01u) % half_chr));
-        nes_load_chrrom_1k(nes, 4, (uint8_t)(chr_off + m->bank_values[2] % half_chr));
-        nes_load_chrrom_1k(nes, 5, (uint8_t)(chr_off + m->bank_values[3] % half_chr));
-        nes_load_chrrom_1k(nes, 6, (uint8_t)(chr_off + m->bank_values[4] % half_chr));
-        nes_load_chrrom_1k(nes, 7, (uint8_t)(chr_off + m->bank_values[5] % half_chr));
+        nes_load_chrrom_1k(nes, 0, chr_off + (m->bank_values[0] & 0x7Eu));
+        nes_load_chrrom_1k(nes, 1, chr_off + (m->bank_values[0] | 0x01u));
+        nes_load_chrrom_1k(nes, 2, chr_off + (m->bank_values[1] & 0x7Eu));
+        nes_load_chrrom_1k(nes, 3, chr_off + (m->bank_values[1] | 0x01u));
+        nes_load_chrrom_1k(nes, 4, chr_off + (m->bank_values[2] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 5, chr_off + (m->bank_values[3] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 6, chr_off + (m->bank_values[4] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 7, chr_off + (m->bank_values[5] & 0x7Fu));
     } else {
-        nes_load_chrrom_1k(nes, 0, (uint8_t)(chr_off + m->bank_values[2] % half_chr));
-        nes_load_chrrom_1k(nes, 1, (uint8_t)(chr_off + m->bank_values[3] % half_chr));
-        nes_load_chrrom_1k(nes, 2, (uint8_t)(chr_off + m->bank_values[4] % half_chr));
-        nes_load_chrrom_1k(nes, 3, (uint8_t)(chr_off + m->bank_values[5] % half_chr));
-        nes_load_chrrom_1k(nes, 4, (uint8_t)(chr_off + (m->bank_values[0] & 0xFEu) % half_chr));
-        nes_load_chrrom_1k(nes, 5, (uint8_t)(chr_off + (m->bank_values[0] | 0x01u) % half_chr));
-        nes_load_chrrom_1k(nes, 6, (uint8_t)(chr_off + (m->bank_values[1] & 0xFEu) % half_chr));
-        nes_load_chrrom_1k(nes, 7, (uint8_t)(chr_off + (m->bank_values[1] | 0x01u) % half_chr));
+        nes_load_chrrom_1k(nes, 0, chr_off + (m->bank_values[2] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 1, chr_off + (m->bank_values[3] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 2, chr_off + (m->bank_values[4] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 3, chr_off + (m->bank_values[5] & 0x7Fu));
+        nes_load_chrrom_1k(nes, 4, chr_off + (m->bank_values[0] & 0x7Eu));
+        nes_load_chrrom_1k(nes, 5, chr_off + (m->bank_values[0] | 0x01u));
+        nes_load_chrrom_1k(nes, 6, chr_off + (m->bank_values[1] & 0x7Eu));
+        nes_load_chrrom_1k(nes, 7, chr_off + (m->bank_values[1] | 0x01u));
     }
 }
 
@@ -96,8 +98,8 @@ static void nes_mapper_init(nes_t* nes) {
     mapper47_t* m = (mapper47_t*)nes->nes_mapper.mapper_register;
     nes_memset(m, 0, sizeof(mapper47_t));
 
-    m->prg_bank_count = (uint8_t)(nes->nes_rom.prg_rom_size * 2u);
-    m->chr_bank_count = (uint8_t)(nes->nes_rom.chr_rom_size * 8u);
+    m->prg_bank_count = (uint16_t)nes->nes_rom.prg_rom_size * 2u;
+    m->chr_bank_count = (uint16_t)nes->nes_rom.chr_rom_size * 8u;
     m->bank_values[6] = 0;
     m->bank_values[7] = 1;
 
@@ -120,7 +122,10 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
         if (nes->nes_rom.four_screen == 0)
             nes_ppu_screen_mirrors(nes, m->mirroring ? NES_MIRROR_HORIZONTAL : NES_MIRROR_VERTICAL);
         break;
-    case 0xA001: break;
+    case 0xA001:
+        m->wram_enable = (data & 0x80u) ? 1u : 0u;
+        m->wram_write_protect = (data & 0x40u) ? 1u : 0u;
+        break;
     case 0xC000: m->irq_latch   = data; break;
     case 0xC001: m->irq_reload  = 1; break;
     case 0xE000: m->irq_enabled = 0; nes->nes_cpu.irq_pending = 0; break;
@@ -132,8 +137,16 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
 static void nes_mapper_sram(nes_t* nes, uint16_t address, uint8_t data) {
     mapper47_t* m = (mapper47_t*)nes->nes_mapper.mapper_register;
     (void)address;
-    m->outer = data & 0x01u;
-    mapper47_update_banks(nes);
+    if (m->wram_enable && !m->wram_write_protect) {
+        m->outer = data & 0x01u;
+        mapper47_update_banks(nes);
+    }
+}
+
+static uint8_t nes_mapper_read_sram(nes_t* nes, uint16_t address) {
+    mapper47_t* m = (mapper47_t*)nes->nes_mapper.mapper_register;
+    (void)address;
+    return m->outer;
 }
 
 static void nes_mapper_hsync(nes_t* nes) {
@@ -153,6 +166,7 @@ int nes_mapper47_init(nes_t* nes) {
     nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
     nes->nes_mapper.mapper_write  = nes_mapper_write;
     nes->nes_mapper.mapper_sram   = nes_mapper_sram;
+    nes->nes_mapper.mapper_read_sram = nes_mapper_read_sram;
     nes->nes_mapper.mapper_hsync  = nes_mapper_hsync;
     return NES_OK;
 }
