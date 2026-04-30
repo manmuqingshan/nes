@@ -21,7 +21,7 @@
  * PRG: 16KB switchable at $8000, 8KB switchable at $C000, fixed last 8KB at $E000.
  * CHR: 8x1KB banks at $D000-$E003.
  * Mirroring: $B003 bits[3:2].
- * Scanline IRQ: $F000-$F002.
+ * IRQ: $F000-$F002, CPU-clocked with scanline mode ticking every 341 PPU dots.
  * Audio ($9000-$B002): not emulated.
  */
 
@@ -33,7 +33,9 @@ typedef struct {
     uint8_t irq_latch;
     uint8_t irq_counter;
     uint8_t irq_enable;
-    uint8_t irq_reload;     /* bit0 of $F001: re-enable after acknowledge */
+    uint8_t irq_enable_ack; /* bit0 of $F001: re-enable after acknowledge */
+    uint8_t irq_cycle_mode;
+    uint16_t irq_cycle_accum;
 } mapper24_register_t;
 
 static void nes_mapper_deinit(nes_t* nes) {
@@ -71,10 +73,10 @@ static const nes_mirror_type_t vrc6_mirror_table[4] = {
 /*
  * $8000        : 16KB PRG bank select for $8000-$BFFF, bits[3:0]
  * $B003        : mirroring bits[3:2]  (0=V, 1=H, 2=1scr0, 3=1scr1)
- * $C000        : 8KB PRG bank select for $C000-$DFFF, bits[3:0]
+ * $C000        : 8KB PRG bank select for $C000-$DFFF, bits[4:0]
  * $D000-$E003  : 8x1KB CHR banks (VRC6a: A1:A0 direct)
  * $F000        : IRQ latch
- * $F001        : IRQ control (bit0=reload-on-ack, bit1=enable, bit2=mode ignored)
+ * $F001        : IRQ control (bit0=enable-after-ack, bit1=enable, bit2=cycle mode)
  * $F002        : IRQ acknowledge
  */
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
@@ -96,7 +98,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
         break;
     case 0xC000u:
         if ((address & 0x0003u) == 0u) {
-            r->prg8 = data & 0x0Fu;
+            r->prg8 = data & 0x1Fu;
             nes_load_prgrom_8k(nes, 2, r->prg8);
         }
         /* $C001-$C002: pulse2 audio - skip */
@@ -108,33 +110,30 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
         uint8_t block = (uint8_t)((address >> 12) - 0xDu); /* 0 or 1 */
         uint8_t sub   = (uint8_t)(address & 0x0003u);
         uint8_t idx   = (uint8_t)(block * 4u + sub);
-        r->chr[idx]   = data;
-        nes_load_chrrom_1k(nes, idx, r->chr[idx]);
+        r->chr[idx] = data;
+        const uint16_t chr_banks = (uint16_t)(nes->nes_rom.chr_rom_size * 8u);
+        nes_load_chrrom_1k(nes, idx, (uint8_t)(r->chr[idx] % chr_banks));
         break;
     }
     case 0xF000u:
         switch (address & 0x0003u) {
         case 0u:
             r->irq_latch = data;
+            nes->nes_cpu.irq_pending = 0;
             break;
         case 1u:
-            r->irq_reload = data & 0x01u;
+            r->irq_cycle_accum = 0;
+            r->irq_cycle_mode = data & 0x04u;
+            r->irq_enable = data & 0x02u;
+            r->irq_enable_ack = data & 0x01u;
             if (data & 0x02u) {
-                r->irq_enable  = 1;
                 r->irq_counter = r->irq_latch;
-            } else {
-                r->irq_enable = 0;
             }
             nes->nes_cpu.irq_pending = 0;
             break;
         case 2u:
             nes->nes_cpu.irq_pending = 0;
-            if (r->irq_reload) {
-                r->irq_enable  = 1;
-                r->irq_counter = r->irq_latch;
-            } else {
-                r->irq_enable = 0;
-            }
+            r->irq_enable = r->irq_enable_ack;
             break;
         default:
             break;
@@ -145,23 +144,37 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     }
 }
 
-/* Decrement scanline IRQ counter; fire when it wraps through zero. */
-static void nes_mapper_hsync(nes_t* nes) {
+static void mapper24_irq_tick(nes_t* nes) {
     mapper24_register_t* r = (mapper24_register_t*)nes->nes_mapper.mapper_register;
-    if (!r->irq_enable) return;
-    if (nes->nes_ppu.MASK_b == 0 && nes->nes_ppu.MASK_s == 0) return;
-    if (r->irq_counter == 0) {
+    if (r->irq_counter == 0xFFu) {
         r->irq_counter = r->irq_latch;
         nes_cpu_irq(nes);
     } else {
-        r->irq_counter--;
+        r->irq_counter++;
+    }
+}
+
+static void nes_mapper_cpu_clock(nes_t* nes, uint16_t cycles) {
+    mapper24_register_t* r = (mapper24_register_t*)nes->nes_mapper.mapper_register;
+    if (!r->irq_enable) return;
+    if (r->irq_cycle_mode) {
+        while (cycles--) {
+            mapper24_irq_tick(nes);
+        }
+        return;
+    }
+
+    r->irq_cycle_accum = (uint16_t)(r->irq_cycle_accum + cycles * 3u);
+    while (r->irq_cycle_accum >= 341u) {
+        r->irq_cycle_accum = (uint16_t)(r->irq_cycle_accum - 341u);
+        mapper24_irq_tick(nes);
     }
 }
 
 int nes_mapper24_init(nes_t* nes) {
-    nes->nes_mapper.mapper_init   = nes_mapper_init;
-    nes->nes_mapper.mapper_deinit = nes_mapper_deinit;
-    nes->nes_mapper.mapper_write  = nes_mapper_write;
-    nes->nes_mapper.mapper_hsync  = nes_mapper_hsync;
+    nes->nes_mapper.mapper_init      = nes_mapper_init;
+    nes->nes_mapper.mapper_deinit    = nes_mapper_deinit;
+    nes->nes_mapper.mapper_write     = nes_mapper_write;
+    nes->nes_mapper.mapper_cpu_clock = nes_mapper_cpu_clock;
     return NES_OK;
 }
