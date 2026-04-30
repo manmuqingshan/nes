@@ -101,35 +101,23 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
 }
 
 /*
- * PPU latch — identical trigger conditions to MMC2 (mapper 9).
- * Pattern table 0 ($0xxx): h==0x0F
- *   address[7:4]==0xD → latch0=0, load FD bank
- *   address[7:4]==0xE → latch0=1, load FE bank
- * Pattern table 1 ($1xxx): h==0x1F
- *   address[7:4]==0xD → latch1=0, load FD bank
- *   address[7:4]==0xE → latch1=1, load FE bank
+ * PPU latch — triggered after the PPU fetches the high pattern byte of tile $FD/$FE.
+ * MMC4 uses ranges for both pattern halves.
  */
 static void nes_mapper_ppu(nes_t* nes, uint16_t address) {
     nes_mapper10_t* r = (nes_mapper10_t*)nes->nes_mapper.mapper_register;
-    const uint8_t h = (uint8_t)(address >> 8);
-    if (h >= 0x20 || (h & 0x0F) != 0x0F) return;
-    const uint8_t l = (uint8_t)(address & 0xF0);
-    if (h < 0x10) {
-        if (l == 0xD0) {
-            r->latch[0] = 0;
-            nes_load_chrrom_4k(nes, 0, r->chr_bank[0][0]);
-        } else if (l == 0xE0) {
-            r->latch[0] = 1;
-            nes_load_chrrom_4k(nes, 0, r->chr_bank[0][1]);
-        }
-    } else {
-        if (l == 0xD0) {
-            r->latch[1] = 0;
-            nes_load_chrrom_4k(nes, 1, r->chr_bank[1][0]);
-        } else if (l == 0xE0) {
-            r->latch[1] = 1;
-            nes_load_chrrom_4k(nes, 1, r->chr_bank[1][1]);
-        }
+    if (address >= 0x0FD8u && address <= 0x0FDFu) {
+        r->latch[0] = 0;
+        nes_load_chrrom_4k(nes, 0, r->chr_bank[0][0]);
+    } else if (address >= 0x0FE8u && address <= 0x0FEFu) {
+        r->latch[0] = 1;
+        nes_load_chrrom_4k(nes, 0, r->chr_bank[0][1]);
+    } else if (address >= 0x1FD8u && address <= 0x1FDFu) {
+        r->latch[1] = 0;
+        nes_load_chrrom_4k(nes, 1, r->chr_bank[1][0]);
+    } else if (address >= 0x1FE8u && address <= 0x1FEFu) {
+        r->latch[1] = 1;
+        nes_load_chrrom_4k(nes, 1, r->chr_bank[1][1]);
     }
 }
 

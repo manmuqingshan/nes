@@ -102,38 +102,23 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
 }
 
 /*
-    PPU latch — triggered when the PPU fetches tile $FD or $FE.
-    Address is the PPU tile start address (pattern_id * 16 + pattern_table_base).
-
-    Latch trigger conditions (same as FCEUX MMC2and4PPUHook):
-      high byte 0x0F (pattern table 0):
-        bits[7:4] == 0xD → latch0=0, load creg[0] at $0000
-        bits[7:4] == 0xE → latch0=1, load creg[1] at $0000
-      high byte 0x1F (pattern table 1):
-        bits[7:4] == 0xD → latch1=0, load creg[2] at $1000
-        bits[7:4] == 0xE → latch1=1, load creg[3] at $1000
+    PPU latch — triggered after the PPU fetches the high pattern byte of tile $FD/$FE.
+    MMC2 uses exact trigger addresses for $0000-$0FFF and ranges for $1000-$1FFF.
 */
 static void nes_mapper_ppu(nes_t* nes, uint16_t address) {
     mapper9_reg_t* mapper_reg = (mapper9_reg_t*)nes->nes_mapper.mapper_register;
-    const uint8_t h = (uint8_t)(address >> 8);
-    if (h >= 0x20 || (h & 0x0F) != 0x0F) return;
-    const uint8_t l = (uint8_t)(address & 0xF0);
-    if (h < 0x10) {
-        if (l == 0xD0) {
-            mapper_reg->latch0 = 0;
-            nes_load_chrrom_4k(nes, 0, mapper_reg->creg[0]);
-        } else if (l == 0xE0) {
-            mapper_reg->latch0 = 1;
-            nes_load_chrrom_4k(nes, 0, mapper_reg->creg[1]);
-        }
-    } else {
-        if (l == 0xD0) {
-            mapper_reg->latch1 = 0;
-            nes_load_chrrom_4k(nes, 1, mapper_reg->creg[2]);
-        } else if (l == 0xE0) {
-            mapper_reg->latch1 = 1;
-            nes_load_chrrom_4k(nes, 1, mapper_reg->creg[3]);
-        }
+    if (address == 0x0FD8u) {
+        mapper_reg->latch0 = 0;
+        nes_load_chrrom_4k(nes, 0, mapper_reg->creg[0]);
+    } else if (address == 0x0FE8u) {
+        mapper_reg->latch0 = 1;
+        nes_load_chrrom_4k(nes, 0, mapper_reg->creg[1]);
+    } else if (address >= 0x1FD8u && address <= 0x1FDFu) {
+        mapper_reg->latch1 = 0;
+        nes_load_chrrom_4k(nes, 1, mapper_reg->creg[2]);
+    } else if (address >= 0x1FE8u && address <= 0x1FEFu) {
+        mapper_reg->latch1 = 1;
+        nes_load_chrrom_4k(nes, 1, mapper_reg->creg[3]);
     }
 }
 
