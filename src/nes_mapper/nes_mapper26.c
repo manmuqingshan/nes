@@ -23,6 +23,7 @@
  * PRG: 16KB switchable at $8000, 8KB switchable at $C000, fixed last 8KB at $E000.
  * CHR: 8x1KB banks.
  * Mirroring: $B003 bits[3:2].
+ * WRAM: 8KB at $6000-$7FFF.
  * IRQ: $F000-$F002 (normalized), CPU-clocked like VRC6a.
  * Audio: not emulated.
  */
@@ -61,6 +62,15 @@ static void nes_mapper_init(nes_t* nes) {
     if (nes->nes_rom.chr_rom_size > 0) {
         for (int i = 0; i < 8; i++) {
             nes_load_chrrom_1k(nes, (uint8_t)i, 0);
+        }
+    }
+
+    if (nes->nes_rom.sram == NULL) {
+        nes->nes_rom.sram = (uint8_t*)nes_malloc(SRAM_SIZE);
+        if (nes->nes_rom.sram != NULL) {
+            nes_memset(nes->nes_rom.sram, 0, SRAM_SIZE);
+        } else {
+            NES_LOG_ERROR("mapper26: failed to allocate SRAM\n");
         }
     }
 }
