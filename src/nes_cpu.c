@@ -105,19 +105,18 @@ static inline void nes_write_cpu(nes_t* nes,uint16_t address, uint8_t data){
                 nes_write_joypad(nes,data);
             else if (address == 0x4014){
                 // NES_LOG_DEBUG("nes_write DMA data:0x%02X oam_addr:0x%02X\n",data,nes->nes_ppu.oam_addr);
-                uint16_t dma_cycles_before = nes->nes_cpu.cycles;
+                const uint8_t dma_odd_cycle = nes->nes_cpu.cycles & 1u;
                 if (nes->nes_ppu.oam_addr) {
                     uint8_t* dst = nes->nes_ppu.oam_data;
-                    const uint8_t len = nes->nes_ppu.oam_addr;
+                    const uint16_t offset = nes->nes_ppu.oam_addr;
                     const uint8_t* src = nes_get_dma_address(nes,data);
-                    nes_memcpy(dst, src + len, len);
-                    nes_memcpy(dst + len, src, NES_PPU_OAM_SIZE - len);
+                    nes_memcpy(dst + offset, src, NES_PPU_OAM_SIZE - offset);
+                    nes_memcpy(dst, src + (NES_PPU_OAM_SIZE - offset), offset);
                 } else {
                     nes_memcpy(nes->nes_ppu.oam_data, nes_get_dma_address(nes,data), NES_PPU_OAM_SIZE);
                 }
                 nes->nes_cpu.cycles += 513;
-                nes->nes_cpu.cycles += nes->nes_cpu.cycles & 1; //奇数周期需要多sleep 1个CPU时钟周期
-                nes_mapper_cpu_tick(nes, (uint16_t)(nes->nes_cpu.cycles - dma_cycles_before));
+                nes->nes_cpu.cycles += dma_odd_cycle; //奇数周期需要多sleep 1个CPU时钟周期
             }else if (address < 0x4016 || address == 0x4017){
 #if (NES_ENABLE_SOUND == 1)
                 nes_write_apu_register(nes, address,data);

@@ -135,7 +135,6 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
 }
 
 static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* draw_data){
-    const nes_color_t background_color = nes->nes_ppu.background_palette[0];
     const nes_color_t* spr_pal = nes->nes_ppu.sprite_palette;
     const sprite_info_t* sprite_info_arr = nes->nes_ppu.sprite_info;
     uint8_t** pattern_table = nes->nes_ppu.pattern_table;
@@ -211,7 +210,7 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                     if (low_bit){
                         const uint8_t palette_index = spr_pal_base | low_bit;
                         if (sprite_info.priority){
-                            if (draw_data[p] == background_color){
+                            if (!nes->nes_ppu.bg_opaque[p]){
                                 draw_data[p] = spr_pal[palette_index];
                             }
                         }else{
@@ -228,7 +227,7 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                     if (low_bit){
                         const uint8_t palette_index = spr_pal_base | low_bit;
                         if (sprite_info.priority){
-                            if (draw_data[p] == background_color){
+                            if (!nes->nes_ppu.bg_opaque[p]){
                                 draw_data[p] = spr_pal[palette_index];
                             }
                         }else{
@@ -241,7 +240,7 @@ static void nes_render_sprite_line(nes_t* nes,uint16_t scanline,nes_color_t* dra
                 }
             }
         }
-        // 检测精灵0命中 (逐像素对比已渲染的背景)
+        // 检测精灵0命中：硬件按背景/精灵不透明像素判断，而不是按最终颜色判断。
         if (sprite_id == 0){
             if (nes->nes_ppu.MASK_b && nes->nes_ppu.STATUS_S == 0){
                 uint8_t px = sprite_info_arr[0].x;
@@ -357,6 +356,21 @@ void nes_run(nes_t* nes){
                 nes_render_background_line(nes, nes->scanline, nes->nes_draw_data + nes->scanline * NES_WIDTH);
 #endif
                 }
+            } else {
+#if (NES_FRAME_SKIP != 0)
+                if (nes->nes_frame_skip_count == 0)
+#endif
+                {
+#if (NES_RAM_LACK == 1)
+                nes_color_t* line_data = nes->nes_draw_data + nes->scanline%(NES_HEIGHT/2) * NES_WIDTH;
+#else
+                nes_color_t* line_data = nes->nes_draw_data + nes->scanline * NES_WIDTH;
+#endif
+                for (uint16_t x = 0; x < NES_WIDTH; x++) {
+                    line_data[x] = nes->nes_ppu.background_palette[0];
+                }
+                nes_memset(nes->nes_ppu.bg_opaque, 0, sizeof(nes->nes_ppu.bg_opaque));
+                }
             }
             if (nes->nes_ppu.MASK_s){
                 if (nes->nes_mapper.mapper_render_screen)
@@ -369,7 +383,7 @@ void nes_run(nes_t* nes){
             }
             nes_opcode(nes,85); // ppu cycles: 85*3=255
             // https://www.nesdev.org/wiki/PPU_scrolling#Wrapping_around
-            if (nes->nes_ppu.MASK_b){
+            if (nes->nes_ppu.MASK_b || nes->nes_ppu.MASK_s){
                 // https://www.nesdev.org/wiki/PPU_scrolling#At_dot_256_of_each_scanline
                 if ((nes->nes_ppu.v.fine_y) < 7) {
                     nes->nes_ppu.v.fine_y++;
@@ -447,10 +461,11 @@ void nes_run(nes_t* nes){
             nes_opcode(nes,scanline_ticks); // Pre-render scanline (-1 or 261)
         }
 
-        if (nes->nes_ppu.MASK_b){
+        if (nes->nes_ppu.MASK_b || nes->nes_ppu.MASK_s){
+            // Dot 257 copies horizontal scroll bits, then dots 280-304 copy vertical bits.
+            // At line granularity this is equivalent to syncing the full VRAM address.
             // https://www.nesdev.org/wiki/PPU_scrolling#During_dots_280_to_304_of_the_pre-render_scanline_(end_of_vblank)
-            // v: GHIA.BC DEF..... <- t: GHIA.BC DEF.....
-            nes->nes_ppu.v_reg = (nes->nes_ppu.v_reg & (uint16_t)0x841F) | (nes->nes_ppu.t_reg & (uint16_t)0x7BE0);
+            nes->nes_ppu.v_reg = nes->nes_ppu.t_reg;
         }
         nes_frame(nes);
 #if (NES_FRAME_SKIP != 0)
