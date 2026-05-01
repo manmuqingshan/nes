@@ -77,6 +77,16 @@ static inline void nes_mapper_ppu_tile_fetch(nes_t* nes, uint8_t tile, uint16_t 
     }
 }
 
+static inline void nes_draw_background_pixel(nes_t* nes, nes_color_t* draw_data, uint8_t x, uint8_t palette_index){
+    if (x < 8u && !nes->nes_ppu.MASK_m) {
+        nes->nes_ppu.bg_opaque[x] = 0;
+        draw_data[x] = nes->nes_ppu.background_palette[0];
+    } else {
+        nes->nes_ppu.bg_opaque[x] = (palette_index & 0x03u) != 0u;
+        draw_data[x] = nes->nes_ppu.background_palette[palette_index];
+    }
+}
+
 static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t* draw_data){
     (void)scanline;
     uint8_t p = 0;
@@ -90,7 +100,6 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     const uint16_t tile_y_offset = (uint16_t)(tile_y << 5);
     const uint16_t attr_y_offset = (uint16_t)(960 + ((tile_y >> 2) << 3));
     const uint8_t attr_y_shift = (tile_y & 2) << 1;
-    const nes_color_t* bg_pal = nes->nes_ppu.background_palette;
     uint8_t** pattern_table = nes->nes_ppu.pattern_table;
     const uint8_t* name_table = nes->nes_ppu.name_table[nametable_id];
     for (uint8_t tile_x = dx; tile_x < 32; tile_x++){
@@ -104,8 +113,8 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
         const uint8_t high_bit = ((attribute >> (attr_y_shift | (tile_x & 2))) & 3) << 2;
         for (; m >= 0; m--){
             uint8_t low_bit = ((bit0 >> m) & 0x01) | ((bit1 >> m)<<1 & 0x02);
-            nes->nes_ppu.bg_opaque[p] = (low_bit != 0);
-            draw_data[p++] = bg_pal[high_bit | low_bit];
+            nes_draw_background_pixel(nes, draw_data, p, high_bit | low_bit);
+            p++;
         }
         m = 7;
     }
@@ -129,8 +138,8 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
         }
         for (; m >= skew; m--){
             const uint8_t low_bit = ((bit0 >> m) & 0x01) | ((bit1 >> m)<<1 & 0x02);
-            nes->nes_ppu.bg_opaque[p] = (low_bit != 0);
-            draw_data[p++] = bg_pal[high_bit | low_bit];
+            nes_draw_background_pixel(nes, draw_data, p, high_bit | low_bit);
+            p++;
         }
         m = 7;
     }
@@ -228,7 +237,7 @@ static void nes_render_sprite_line(nes_t* nes,const sprite_line_t* sprite_line,n
             if (sprite_info.flip_h){
                 for (int8_t m = 0; m <= 7; m++){
                     const uint8_t low_bit = ((sprite_bit0 >> m) & 0x01) | ((sprite_bit1 >> m)<<1 & 0x02);
-                    if (low_bit){
+                    if (low_bit && (p >= 8u || nes->nes_ppu.MASK_M)){
                         const uint8_t palette_index = spr_pal_base | low_bit;
                         if (sprite_info.priority){
                             if (!nes->nes_ppu.bg_opaque[p]){
@@ -245,7 +254,7 @@ static void nes_render_sprite_line(nes_t* nes,const sprite_line_t* sprite_line,n
             }else{
                 for (int8_t m = 7; m >= 0; m--){
                     const uint8_t low_bit = ((sprite_bit0 >> m) & 0x01) | ((sprite_bit1 >> m)<<1 & 0x02);
-                    if (low_bit){
+                    if (low_bit && (p >= 8u || nes->nes_ppu.MASK_M)){
                         const uint8_t palette_index = spr_pal_base | low_bit;
                         if (sprite_info.priority){
                             if (!nes->nes_ppu.bg_opaque[p]){
@@ -269,7 +278,7 @@ static void nes_render_sprite_line(nes_t* nes,const sprite_line_t* sprite_line,n
                     for (int8_t m = 0; m <= 7; m++){
                         if (px == 255) break;
                         if ((sprite_date >> m) & 1){
-                            if (nes->nes_ppu.bg_opaque[px]){
+                            if ((px >= 8u || (nes->nes_ppu.MASK_m && nes->nes_ppu.MASK_M)) && nes->nes_ppu.bg_opaque[px]){
                                 nes->nes_ppu.STATUS_S = 1;
                                 break;
                             }
@@ -280,7 +289,7 @@ static void nes_render_sprite_line(nes_t* nes,const sprite_line_t* sprite_line,n
                     for (int8_t m = 7; m >= 0; m--){
                         if (px == 255) break;
                         if ((sprite_date >> m) & 1){
-                            if (nes->nes_ppu.bg_opaque[px]){
+                            if ((px >= 8u || (nes->nes_ppu.MASK_m && nes->nes_ppu.MASK_M)) && nes->nes_ppu.bg_opaque[px]){
                                 nes->nes_ppu.STATUS_S = 1;
                                 break;
                             }

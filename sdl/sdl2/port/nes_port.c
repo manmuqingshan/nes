@@ -184,7 +184,7 @@ static void sdl_event(nes_t *nes) {
                     }
                 break;
             case SDL_QUIT:
-                nes_deinit(nes);
+                nes->nes_quit = 1;
                 return;
         }
     }
