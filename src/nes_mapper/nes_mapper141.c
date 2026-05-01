@@ -18,15 +18,18 @@
 
 /* https://www.nesdev.org/wiki/INES_Mapper_141
  * Mapper 141 — Sachen 8259A.
- * Same register interface as mapper 137/138/139.
- * CHR banks: 4KB each. R0/R1 are 4KB CHR at $0000/$1000.
+ * PRG: 32KB pages at $8000-$FFFF, switched by R5.
+ * CHR: 4 × 2KB pages — 8259A formula: shift=1, chrOr={0,1,0,1}.
+ *   Page n (2KB): page_idx = ((chrHigh | (R[n]&7)) << 1) | (n & 1)
+ *   where chrHigh = (R4 & 7) << 3.
+ * R4 bit 0: 0=vertical mirror, 1=horizontal mirror.
  */
 
 typedef struct {
     uint8_t regs[8];
     uint8_t reg_sel;
-    uint8_t prg_bank_count;
-    uint8_t chr_bank_count;
+    uint8_t prg_bank_count32;   /* number of 32KB PRG blocks */
+    uint16_t chr_bank_count;    /* 1KB CHR bank total, max 256 requires uint16_t */
 } mapper141_t;
 
 static void nes_mapper_deinit(nes_t* nes) {
@@ -37,23 +40,24 @@ static void nes_mapper_deinit(nes_t* nes) {
 static void mapper141_update_banks(nes_t* nes) {
     mapper141_t* m = (mapper141_t*)nes->nes_mapper.mapper_register;
 
-    if (m->prg_bank_count > 0u) {
-        uint8_t prg = m->regs[5] % m->prg_bank_count;
-        uint8_t last = (uint8_t)(m->prg_bank_count - 1u);
-        nes_load_prgrom_8k(nes, 0, prg);
-        nes_load_prgrom_8k(nes, 1, prg);
-        nes_load_prgrom_8k(nes, 2, last);
-        nes_load_prgrom_8k(nes, 3, last);
+    /* PRG: 32KB banking — R5 selects 32KB block */
+    if (m->prg_bank_count32 > 0u) {
+        uint8_t prg32 = m->regs[5] % m->prg_bank_count32;
+        nes_load_prgrom_32k(nes, 0, prg32);
     }
 
+    /* CHR: 4 × 2KB pages — Sachen 8259A formula
+     * page_idx = ((chrHigh | (R[p] & 7)) << 1) | (p & 1)
+     * chrHigh = (R4 & 7) << 3  */
     if (m->chr_bank_count > 0u) {
-        uint8_t ch4 = (uint8_t)(m->chr_bank_count / 4u);
-        if (ch4 == 0u) ch4 = 1u;
-        uint8_t b0 = (uint8_t)(m->regs[0] % ch4 * 4u);
-        uint8_t b1 = (uint8_t)(m->regs[1] % ch4 * 4u);
-        for (uint8_t i = 0u; i < 4u; i++) {
-            nes_load_chrrom_1k(nes, i,              (uint8_t)((b0 + i) % m->chr_bank_count));
-            nes_load_chrrom_1k(nes, (uint8_t)(i+4u),(uint8_t)((b1 + i) % m->chr_bank_count));
+        uint16_t total_2k = m->chr_bank_count / 2u;
+        if (total_2k == 0u) total_2k = 1u;
+        uint8_t chrHigh = (uint8_t)((m->regs[4] & 0x07u) << 3u);
+        for (uint8_t p = 0u; p < 4u; p++) {
+            uint16_t page = (uint16_t)(((uint16_t)(chrHigh | (m->regs[p] & 0x07u)) << 1u) | (p & 1u));
+            page %= total_2k;
+            nes_load_chrrom_1k(nes, (uint8_t)(p * 2u),      (uint16_t)(page * 2u));
+            nes_load_chrrom_1k(nes, (uint8_t)(p * 2u + 1u), (uint16_t)(page * 2u + 1u));
         }
     }
 
@@ -68,8 +72,9 @@ static void nes_mapper_init(nes_t* nes) {
     }
     mapper141_t* m = (mapper141_t*)nes->nes_mapper.mapper_register;
     nes_memset(m, 0, sizeof(mapper141_t));
-    m->prg_bank_count = (uint8_t)(nes->nes_rom.prg_rom_size * 2u);
-    m->chr_bank_count = (uint8_t)(nes->nes_rom.chr_rom_size * 8u);
+    m->prg_bank_count32 = (uint8_t)(nes->nes_rom.prg_rom_size / 2u);
+    if (m->prg_bank_count32 == 0u) m->prg_bank_count32 = 1u;
+    m->chr_bank_count = (uint16_t)(nes->nes_rom.chr_rom_size * 8u);
     mapper141_update_banks(nes);
 }
 
