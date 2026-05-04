@@ -50,6 +50,8 @@ typedef struct {
 static void nes_mapper_deinit(nes_t* nes) {
     nes_free(nes->nes_mapper.mapper_register);
     nes->nes_mapper.mapper_register = NULL;
+    nes->nes_mapper.mapper_exram = NULL;
+    nes->nes_mapper.mapper_chr_hi = 0;
 }
 
 static void mapper5_update_fill_nt(mapper5_register_t* mapper_reg) {
@@ -255,21 +257,21 @@ static void nes_mapper_init(nes_t* nes) {
     mapper5_update_prg(nes);
     mapper5_apply_chr_sprite(nes);
     mapper5_update_nametables(nes);
+
+    nes->nes_mapper.mapper_exram = (mapper_reg->exram_mode == 1) ? mapper_reg->exram : NULL;
+    nes->nes_mapper.mapper_chr_hi = mapper_reg->chr_hi;
 }
 
 /* Handle writes to $5000-$5FFF */
 static void nes_mapper_apu(nes_t* nes, uint16_t address, uint8_t data) {
     mapper5_register_t* mapper_reg = (mapper5_register_t*)nes->nes_mapper.mapper_register;
     if (address >= 0x5C00 && address <= 0x5FFF) {
-        /* ExRAM write */
-        if (mapper_reg->exram_mode <= 1) {
-            /* Modes 0,1: writable only during rendering */
-            if (mapper_reg->in_frame) {
-                mapper_reg->exram[address & 0x3FF] = data;
-            } else {
-                mapper_reg->exram[address & 0x3FF] = 0;
-            }
-        } else if (mapper_reg->exram_mode == 2) {
+        /* ExRAM write: modes 0/1/2 all accept writes; mode 3 is read-only.
+         * Real hardware zeros writes in modes 0/1 when not rendering, but that
+         * requires precise PPU-read-based in_frame detection. Accept writes
+         * unconditionally for compatibility with games that initialize ExRAM
+         * while rendering is disabled. */
+        if (mapper_reg->exram_mode <= 2) {
             mapper_reg->exram[address & 0x3FF] = data;
         }
         /* Mode 3: read-only, writes ignored */
@@ -297,6 +299,7 @@ static void nes_mapper_apu(nes_t* nes, uint16_t address, uint8_t data) {
             break;
         case 0x5104: /* ExRAM mode */
             mapper_reg->exram_mode = data & 3;
+            nes->nes_mapper.mapper_exram = (mapper_reg->exram_mode == 1) ? mapper_reg->exram : NULL;
             break;
         case 0x5105: /* Nametable mapping */
             mapper_reg->nametable_mapping = data;
@@ -335,6 +338,7 @@ static void nes_mapper_apu(nes_t* nes, uint16_t address, uint8_t data) {
 
         case 0x5130: /* Upper CHR bank bits */
             mapper_reg->chr_hi = data & 3;
+            nes->nes_mapper.mapper_chr_hi = data & 3;
             break;
 
         case 0x5203: /* IRQ target scanline */
@@ -360,11 +364,8 @@ static void nes_mapper_apu(nes_t* nes, uint16_t address, uint8_t data) {
 static uint8_t nes_mapper_read_apu(nes_t* nes, uint16_t address) {
     mapper5_register_t* mapper_reg = (mapper5_register_t*)nes->nes_mapper.mapper_register;
     if (address >= 0x5C00 && address <= 0x5FFF) {
-        /* ExRAM read */
-        if (mapper_reg->exram_mode >= 2) {
-            return mapper_reg->exram[address & 0x3FF];
-        }
-        return 0;
+        /* ExRAM always CPU-readable regardless of mode */
+        return mapper_reg->exram[address & 0x3FF];
     }
 
     switch (address) {

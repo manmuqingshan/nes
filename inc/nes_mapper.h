@@ -45,6 +45,11 @@ typedef struct {
     uint8_t mapper_ppu_tile_max;
     /* Callback at Rendering Screen 1:BG, 0:Sprite */
     void (*mapper_render_screen)(nes_t* nes, uint8_t mode);
+    /* ExRAM mode 1 (MMC5): non-NULL when exram_mode==1.
+     * Each byte: bits[5:0] = 4KB CHR bank selector, bits[7:6] = palette override.
+     * mapper_chr_hi holds upper CHR bank bits ($5130 bits[1:0]). */
+    uint8_t* mapper_exram;
+    uint8_t  mapper_chr_hi;
     void* mapper_register;
     void* mapper_data;
 } nes_mapper_t;

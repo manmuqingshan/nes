@@ -102,15 +102,30 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     const uint8_t attr_y_shift = (tile_y & 2) << 1;
     uint8_t** pattern_table = nes->nes_ppu.pattern_table;
     const uint8_t* name_table = nes->nes_ppu.name_table[nametable_id];
+    /* ExRAM mode 1 (MMC5): per-tile 4KB CHR bank + palette override */
+    const uint8_t* exram = nes->nes_mapper.mapper_exram;
+    const uint16_t ex_4k_banks = (exram != NULL && nes->nes_rom.chr_rom != NULL && nes->nes_rom.chr_rom_size > 0u) ?
+        (uint16_t)(nes->nes_rom.chr_rom_size * 2u) : 0u;
     for (uint8_t tile_x = dx; tile_x < 32; tile_x++){
         const uint8_t pattern_id = name_table[tile_x + tile_y_offset];
-        const uint16_t pattern_address = (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u + dy);
-        const uint8_t* bit0_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
+        const uint8_t* bit0_p;
+        uint8_t high_bit;
+        if (ex_4k_banks > 0u) {
+            const uint8_t ex_byte = exram[(uint16_t)tile_y * 32u + tile_x];
+            /* NESdev MMC5: bits[5:0] = 4KB CHR bank, bits[7:6] = palette */
+            const uint16_t ex_bank = (uint16_t)((ex_byte & 0x3Fu) | ((uint16_t)nes->nes_mapper.mapper_chr_hi << 6u)) % ex_4k_banks;
+            bit0_p = nes->nes_rom.chr_rom + (uint32_t)ex_bank * 4096u + ((uint16_t)pattern_id << 4u);
+            high_bit = (uint8_t)(((ex_byte >> 6u) & 0x03u) << 2u);
+        } else {
+            const uint16_t pattern_address = (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u + dy);
+            const uint8_t* tile_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
+            const uint8_t attribute = name_table[attr_y_offset + (tile_x >> 2)];
+            nes_mapper_ppu_tile_fetch(nes, pattern_id, (uint16_t)(pattern_address + 8u), &pattern_table);
+            bit0_p = tile_p;
+            high_bit = ((attribute >> (attr_y_shift | (tile_x & 2))) & 3) << 2;
+        }
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit0_p[dy + 8];
-        nes_mapper_ppu_tile_fetch(nes, pattern_id, (uint16_t)(pattern_address + 8u), &pattern_table);
-        const uint8_t attribute = name_table[attr_y_offset + (tile_x >> 2)];
-        const uint8_t high_bit = ((attribute >> (attr_y_shift | (tile_x & 2))) & 3) << 2;
         for (; m >= 0; m--){
             uint8_t low_bit = ((bit0 >> m) & 0x01) | ((bit1 >> m)<<1 & 0x02);
             nes_draw_background_pixel(nes, draw_data, p, high_bit | low_bit);
@@ -122,13 +137,24 @@ static void nes_render_background_line(nes_t* nes,uint16_t scanline,nes_color_t*
     name_table = nes->nes_ppu.name_table[nametable_id];
     for (uint8_t tile_x = 0; tile_x <= dx; tile_x++){
         const uint8_t pattern_id = name_table[tile_x + tile_y_offset];
-        const uint16_t pattern_address = (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u + dy);
-        const uint8_t* bit0_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
+        const uint8_t* bit0_p;
+        uint8_t high_bit;
+        if (ex_4k_banks > 0u) {
+            const uint8_t ex_byte = exram[(uint16_t)tile_y * 32u + tile_x];
+            /* NESdev MMC5: bits[5:0] = 4KB CHR bank, bits[7:6] = palette */
+            const uint16_t ex_bank = (uint16_t)((ex_byte & 0x3Fu) | ((uint16_t)nes->nes_mapper.mapper_chr_hi << 6u)) % ex_4k_banks;
+            bit0_p = nes->nes_rom.chr_rom + (uint32_t)ex_bank * 4096u + ((uint16_t)pattern_id << 4u);
+            high_bit = (uint8_t)(((ex_byte >> 6u) & 0x03u) << 2u);
+        } else {
+            const uint16_t pattern_address = (uint16_t)((uint16_t)bg_base * 0x400u + (uint16_t)pattern_id * 16u + dy);
+            const uint8_t* tile_p = pattern_table[bg_base + (pattern_id >> 6)] + ((pattern_id & 0x3F) << 4);
+            const uint8_t attribute = name_table[attr_y_offset + (tile_x >> 2)];
+            nes_mapper_ppu_tile_fetch(nes, pattern_id, (uint16_t)(pattern_address + 8u), &pattern_table);
+            bit0_p = tile_p;
+            high_bit = ((attribute >> (attr_y_shift | (tile_x & 2))) & 3) << 2;
+        }
         const uint8_t bit0 = bit0_p[dy];
         const uint8_t bit1 = bit0_p[dy + 8];
-        nes_mapper_ppu_tile_fetch(nes, pattern_id, (uint16_t)(pattern_address + 8u), &pattern_table);
-        const uint8_t attribute = name_table[attr_y_offset + (tile_x >> 2)];
-        const uint8_t high_bit = ((attribute >> (attr_y_shift | (tile_x & 2))) & 3) << 2;
         uint8_t skew = 0;
         if (tile_x == dx){
             if (nes->nes_ppu.x){
