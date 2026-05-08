@@ -19,8 +19,10 @@
 /* https://www.nesdev.org/wiki/Color_Dreams */
 
 static void nes_mapper_init(nes_t* nes) {
-    // CPU $8000-$FFFF: 32 KB switchable PRG ROM bank
-    nes_load_prgrom_32k(nes, 0, 0);
+    // CPU $8000-$FFFF: last 32 KB PRG ROM bank (supports multi-bank ROMs like 64KB)
+    uint8_t prg_bank_count32 = (uint8_t)(nes->nes_rom.prg_rom_size / 2u);
+    uint8_t last = prg_bank_count32 > 0u ? (uint8_t)(prg_bank_count32 - 1u) : 0u;
+    nes_load_prgrom_32k(nes, 0, last);
     // CHR capacity: 8 KiB ROM (skip if CHR-RAM)
     if (nes->nes_rom.chr_rom_size > 0) {
         nes_load_chrrom_8k(nes, 0, 0);
@@ -51,7 +53,7 @@ static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
 }
 
 int nes_mapper11_init(nes_t* nes) {
-    nes->nes_mapper.mapper_init  = nes_mapper_init;
-    nes->nes_mapper.mapper_write = nes_mapper_write;
+    nes->nes_mapper.mapper_init   = nes_mapper_init;
+    nes->nes_mapper.mapper_write  = nes_mapper_write;
     return NES_OK;
 }

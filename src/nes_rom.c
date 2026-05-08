@@ -33,6 +33,12 @@ static const nes_romdb_entry_t romdb[] = {
     { 0x0F141525u, 33u },
     /* Super Mario Bros.+Tetris+Nintendo World Cup (E) [!] — header says mapper 4, actually PAL-ZZ (mapper 37) */
     { 0x73298C87u, 37u },
+    /* Death Race (U) [!] — header says mapper 11, actual hardware is AGCI PCB (mapper 144).
+       PRG fixed to last 32KB (bank1); CHR switched via upper nibble of write data.
+       mapper11 breaks: PRG-switch at $804C sends CPU to bank0 whose NMI handler
+       never enables PPUMASK. mapper3 (CNROM bus-conflict) gives wrong CHR banks.
+       mapper144 = fixed PRG last bank + CHR via bits[7:4], which is the correct behavior. */
+    { 0x5CAA3E61u, 144u },
 };
 
 static void nes_romdb_lookup(nes_t* nes) {
