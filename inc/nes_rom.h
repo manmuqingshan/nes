@@ -143,6 +143,7 @@ typedef struct nes_rom_info{
     uint8_t  mirroring_type;            /*  0: Horizontal or mapper-controlled 1: Vertical */
     uint8_t  four_screen;               /*  0: No 1: Yes */
     uint8_t  save_ram;                  /*  0: Not present 1: Present */
+    uint32_t rom_crc;                   /*  PRG+CHR CRC32 computed at load time */
 #if (NES_ROM_STREAM == 1)
     FILE*    rom_file;                  /*  ROM file handle (kept open for streaming) */
     long     prg_data_offset;           /*  PRG-ROM data start offset in file */

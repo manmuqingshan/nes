@@ -17,8 +17,10 @@
 #include "nes.h"
 
 /* https://www.nesdev.org/wiki/VRC4
- * Mapper 23 - VRC4b/VRC4e variant.
- * Address decode: CPU A2 = register bit0, CPU A3 = register bit1.
+ * Mapper 23 - VRC4b/VRC4e/VRC2b variant.
+ * VRC4e (default): CPU A2 = register bit0, CPU A3 = register bit1.
+ * VRC2b (vrc2b_mode=1): CPU A0 = register bit0, CPU A1 = register bit1.
+ *   Used by 搬运工 (Porter, CRC32=0xF6C484F5) which writes $B000/$B001/$B002/$B003.
  * 8KB PRG banks: slot0/slot2 swappable, slot1 switchable, slot3 fixed last bank.
  * 8x1KB CHR banks via $B000-$E00C (two banks per $1000 block).
  * VRC4 IRQ is CPU-clock based, with scanline mode ticking every 341 PPU dots.
@@ -35,6 +37,7 @@ typedef struct {
     uint8_t irq_counter;
     uint8_t irq_cycle_mode;
     uint16_t irq_cycle_accum;
+    uint8_t vrc2b_mode; /* 1 = VRC2b address decode (A0/A1), 0 = VRC4e (A2/A3) */
 } mapper23_register_t;
 
 static void nes_mapper_deinit(nes_t* nes) {
@@ -42,8 +45,10 @@ static void nes_mapper_deinit(nes_t* nes) {
     nes->nes_mapper.mapper_register = NULL;
 }
 
-static uint16_t mapper23_decode_addr(uint16_t address) {
-    return (uint16_t)((address & 0xF000u) | ((address >> 2) & 0x0003u));
+static uint16_t mapper23_decode_addr(uint8_t vrc2b_mode, uint16_t address) {
+    uint8_t sub = vrc2b_mode ? (uint8_t)(address & 0x0003u)
+                             : (uint8_t)((address >> 2) & 0x0003u);
+    return (uint16_t)((address & 0xF000u) | sub);
 }
 
 static void mapper23_update_prg(nes_t* nes) {
@@ -75,6 +80,8 @@ static void nes_mapper_init(nes_t* nes) {
 
     r->prg[0] = 0;
     r->prg[1] = 1;
+    /* 搬运工 (Porter, CRC32=0x39B68AA3): VRC2b-style addressing uses A0/A1 bits */
+    r->vrc2b_mode = (nes->nes_rom.rom_crc == 0x39B68AA3u) ? 1u : 0u;
     mapper23_update_prg(nes);
 
     if (nes->nes_rom.chr_rom_size == 0) {
@@ -135,7 +142,7 @@ static const nes_mirror_type_t vrc4_mirror_table[4] = {
  */
 static void nes_mapper_write(nes_t* nes, uint16_t address, uint8_t data) {
     mapper23_register_t* r = (mapper23_register_t*)nes->nes_mapper.mapper_register;
-    const uint16_t reg = mapper23_decode_addr(address);
+    const uint16_t reg = mapper23_decode_addr(r->vrc2b_mode, address);
     switch (reg & 0xF003u) {
     case 0x8000u:
     case 0x8001u:

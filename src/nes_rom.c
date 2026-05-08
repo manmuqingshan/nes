@@ -50,6 +50,7 @@ static void nes_romdb_lookup(nes_t* nes) {
     if (chr_len > 0u && nes->nes_rom.chr_rom != NULL)
         c = nes_crc32_update(c, nes->nes_rom.chr_rom, chr_len);
     uint32_t crc = c ^ 0xFFFFFFFFu;
+    nes->nes_rom.rom_crc = crc;
     for (size_t i = 0; i < sizeof(romdb) / sizeof(romdb[0]); i++) {
         if (romdb[i].crc32 == crc) {
             NES_LOG_INFO("romdb: CRC32=%08X mapper %d->%d\n",
