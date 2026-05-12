@@ -27,8 +27,8 @@ typedef struct {
     uint8_t irq_counter;    /* Current IRQ counter */
     uint8_t irq_reload;     /* Flag: reload counter on next scanline */
     uint8_t irq_enabled;    /* $E001: IRQ enabled */
-    uint8_t prg_bank_count; /* Number of 8KB PRG banks */
-    uint8_t chr_bank_count; /* Number of 1KB CHR banks */
+    uint16_t prg_bank_count; /* Number of 8KB PRG banks */
+    uint16_t chr_bank_count; /* Number of 1KB CHR banks */
 } mapper4_register_t;
 
 
@@ -47,8 +47,8 @@ static void mapper4_update_banks(nes_t* nes) {
      * Mode 1: $C000-$DFFF swappable, $8000-$9FFF fixed to second-last bank
      * $A000-$BFFF is always R7, $E000-$FFFF is always last bank
      */
-    uint8_t last_bank = mapper_reg->prg_bank_count - 1;
-    uint8_t second_last = mapper_reg->prg_bank_count - 2;
+    uint16_t last_bank = mapper_reg->prg_bank_count - 1u;
+    uint16_t second_last = mapper_reg->prg_bank_count - 2u;
 
     if (prg_mode == 0) {
         nes_load_prgrom_8k(nes, 0, mapper_reg->bank_values[6] % mapper_reg->prg_bank_count);
@@ -103,8 +103,8 @@ static void nes_mapper_init(nes_t* nes) {
         if (nes->nes_mapper.mapper_register == NULL) return;
     }
     mapper4_register_t* mapper_reg = (mapper4_register_t*)nes->nes_mapper.mapper_register;
-    mapper_reg->prg_bank_count = (uint8_t)(nes->nes_rom.prg_rom_size * 2); /* 16KB units -> 8KB units */
-    mapper_reg->chr_bank_count = (uint8_t)(nes->nes_rom.chr_rom_size * 8); /* 8KB units -> 1KB units */
+    mapper_reg->prg_bank_count = (uint16_t)(nes->nes_rom.prg_rom_size * 2u); /* 16KB units -> 8KB units */
+    mapper_reg->chr_bank_count = (uint16_t)(nes->nes_rom.chr_rom_size * 8u); /* 8KB units -> 1KB units */
 
     mapper_reg->bank_select = 0;
     mapper_reg->mirroring = 0;
@@ -125,6 +125,15 @@ static void nes_mapper_init(nes_t* nes) {
     /* CHR-RAM: set up pattern table pointers before bank update */
     if (nes->nes_rom.chr_rom_size == 0) {
         nes_load_chrrom_8k(nes, 0, 0);
+    }
+
+    if (nes->nes_rom.save_ram && nes->nes_rom.sram == NULL) {
+        nes->nes_rom.sram = (uint8_t*)nes_malloc(SRAM_SIZE);
+        if (nes->nes_rom.sram != NULL) {
+            nes_memset(nes->nes_rom.sram, 0, SRAM_SIZE);
+        } else {
+            NES_LOG_ERROR("mapper4: failed to allocate WRAM\n");
+        }
     }
 
     mapper4_update_banks(nes);
