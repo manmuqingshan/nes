@@ -92,6 +92,18 @@
 #error "no supprt color depth"
 #endif
 
+#ifndef NES_ENABLE_HEAVY_MAPPERS
+#define NES_ENABLE_HEAVY_MAPPERS        (0)
+#endif
+
+#ifndef NES_ENABLE_PLANE1_MAPPERS
+#define NES_ENABLE_PLANE1_MAPPERS       (0)
+#endif
+
+#ifndef NES_ENABLE_PLANE2_MAPPERS
+#define NES_ENABLE_PLANE2_MAPPERS       (0)
+#endif
+
 /* memory */
 void *nes_malloc(int num);
 void nes_free(void *address);

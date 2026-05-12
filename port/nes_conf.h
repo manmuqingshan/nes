@@ -35,6 +35,9 @@
 /* Enable mappers that require significant heap/stack (>512B per instance).
  * Set to 0 for resource-constrained MCUs. */
 #define NES_ENABLE_HEAVY_MAPPERS (0)
+#define NES_ENABLE_PLANE1_MAPPERS (0) /* Enable NES 2.0 mappers Plane 1 table 256~511 */
+#define NES_ENABLE_PLANE2_MAPPERS (0) /* Enable NES 2.0 mappers Plane 2 table 512~767 */
+
 /*
 *  - NES_LOG_LEVEL_NONE     Do not log anything.
 *  - NES_LOG_LEVEL_ERROR    Log error.
